@@ -1,10 +1,17 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"os/user"
+	"path/filepath"
+
 	"github.com/blang/semver"
 	"github.com/glvd/cluster/version"
 	"github.com/godcong/go-trait"
 )
+
+var commit string
 
 var log = trait.NewZapSugar()
 
