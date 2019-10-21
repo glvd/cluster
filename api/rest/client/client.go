@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/glvd/cluster/api"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 
 	"github.com/ipfs/go-cid"
 	shell "github.com/ipfs/go-ipfs-api"
@@ -111,7 +112,7 @@ type Client interface {
 
 	// IPFS returns an instance of go-ipfs-api's Shell, pointing to a
 	// Cluster's IPFS proxy endpoint.
-	IPFS(context.Context) *shell.Shell
+	IPFS(context.Context) *httpapi.HttpApi
 
 	// GetConnectGraph returns an ipfs-cluster connection graph.
 	GetConnectGraph(context.Context) (*api.ConnectGraph, error)
