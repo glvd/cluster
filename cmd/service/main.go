@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/blang/semver"
+	"github.com/glvd/cluster/version"
 	"github.com/godcong/go-trait"
 )
 
