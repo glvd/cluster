@@ -7,44 +7,26 @@ option java_outer_classname = "ClusterServiceProto";
 package proto;
 
 service ClusterService {
-    rpc RemoteDownload (RemoteDownloadRequest) returns (NodeReply) {
+    rpc Resource (ResourceRequest) returns (ResourceReply) {
     }
-    rpc Status (StatusRequest) returns (NodeReply) {
+    rpc AsyncResource (ResourceRequest) returns (bool) {
     }
+    rpc ResourceHandle (ResourceReply) returns (bool) {
+    }
+
 }
 
-message StatusRequest {
+message ResourceRequest {
     string id = 1;
 }
 
-enum NodeRemoteType {
-    Basic = 0;
-    Retry = 1;
-    Force = 2;
+message ResourceReply {
+    string id = 1;
+}
+enum ResourceType {
+    List = 0;
+    Add = 1;
+    Sync = 2;
+    Remove = 3;
 }
 
-
-enum NodeBackType {
-    HTTP = 0;
-    GRPC = 1;
-}
-
-message RemoteDownloadRequest {
-    string ID = 1;
-    string objectKey = 2;
-    string keyURL = 3;
-    //NodeRemoteType remoteType = 2 ;
-    //NodeBackType backType = 3 ;
-    //string backHost = 4;
-}
-
-message NodeReply {
-    int32 code = 1;
-    string message = 2;
-    NodeReplyDetail detail = 3;
-}
-
-message NodeReplyDetail {
-    string ID = 1;
-    string json = 2;
-}
