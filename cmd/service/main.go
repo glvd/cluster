@@ -52,8 +52,6 @@ func init() {
 	}
 	log.Register(logger.Sugar())
 
-	//log.Info("init")
-
 	// Set build information.
 	if build, err := semver.NewBuildVersion(commit); err == nil {
 		version.Version.Build = []string{"git" + build}

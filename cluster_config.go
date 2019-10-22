@@ -15,8 +15,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
-const configKey = "cluster"
-
 // Configuration defaults
 const (
 	DefaultListenAddr          = "/ip4/0.0.0.0/tcp/9096"
@@ -332,58 +330,58 @@ func (cfg *Config) LoadJSON(raw []byte) error {
 
 }
 
-func (cfg *Config) applyConfigJSON(jcfg *configJSON) error {
-	SetIfNotDefault(jcfg.PeerStoreFile, &cfg.PeerstoreFile)
+func (cfg *Config) applyConfigJSON(cjson *configJSON) error {
+	SetIfNotDefault(cjson.PeerStoreFile, &cfg.PeerstoreFile)
 
-	SetIfNotDefault(jcfg.PeerName, &cfg.Peername)
+	SetIfNotDefault(cjson.PeerName, &cfg.Peername)
 
-	clusterSecret, err := DecodeClusterSecret(jcfg.Secret)
+	clusterSecret, err := DecodeClusterSecret(cjson.Secret)
 	if err != nil {
 		err = fmt.Errorf("error loading cluster secret from config: %s", err)
 		return err
 	}
 	cfg.Secret = clusterSecret
 
-	clusterAddr, err := multiaddr.NewMultiaddr(jcfg.ListenMultiAddress)
+	clusterAddr, err := multiaddr.NewMultiaddr(cjson.ListenMultiAddress)
 	if err != nil {
 		err = fmt.Errorf("error parsing cluster_listen_multiaddress: %s", err)
 		return err
 	}
 	cfg.ListenAddr = clusterAddr
 
-	if conman := jcfg.ConnectionManager; conman != nil {
+	if conman := cjson.ConnectionManager; conman != nil {
 		cfg.ConnMgr = &ConnMgrConfig{
-			HighWater: jcfg.ConnectionManager.HighWater,
-			LowWater:  jcfg.ConnectionManager.LowWater,
+			HighWater: cjson.ConnectionManager.HighWater,
+			LowWater:  cjson.ConnectionManager.LowWater,
 		}
 		err = ParseDurations("cluster",
-			&DurationOpt{Duration: jcfg.ConnectionManager.GracePeriod, Dst: &cfg.ConnMgr.GracePeriod, Name: "connection_manager.grace_period"},
+			&DurationOpt{Duration: cjson.ConnectionManager.GracePeriod, Dst: &cfg.ConnMgr.GracePeriod, Name: "connection_manager.grace_period"},
 		)
 		if err != nil {
 			return err
 		}
 	}
 
-	rplMin := jcfg.ReplicationFactorMin
-	rplMax := jcfg.ReplicationFactorMax
+	rplMin := cjson.ReplicationFactorMin
+	rplMax := cjson.ReplicationFactorMax
 	SetIfNotDefault(rplMin, &cfg.ReplicationFactorMin)
 	SetIfNotDefault(rplMax, &cfg.ReplicationFactorMax)
 
 	err = ParseDurations("cluster",
-		&DurationOpt{Duration: jcfg.StateSyncInterval, Dst: &cfg.StateSyncInterval, Name: "state_sync_interval"},
-		&DurationOpt{Duration: jcfg.IPFSSyncInterval, Dst: &cfg.IPFSSyncInterval, Name: "ipfs_sync_interval"},
-		&DurationOpt{Duration: jcfg.PinRecoverInterval, Dst: &cfg.PinRecoverInterval, Name: "pin_recover_interval"},
-		&DurationOpt{Duration: jcfg.MonitorPingInterval, Dst: &cfg.MonitorPingInterval, Name: "monitor_ping_interval"},
-		&DurationOpt{Duration: jcfg.PeerWatchInterval, Dst: &cfg.PeerWatchInterval, Name: "peer_watch_interval"},
-		&DurationOpt{Duration: jcfg.MDNSInterval, Dst: &cfg.MDNSInterval, Name: "mdns_interval"},
+		&DurationOpt{Duration: cjson.StateSyncInterval, Dst: &cfg.StateSyncInterval, Name: "state_sync_interval"},
+		&DurationOpt{Duration: cjson.IPFSSyncInterval, Dst: &cfg.IPFSSyncInterval, Name: "ipfs_sync_interval"},
+		&DurationOpt{Duration: cjson.PinRecoverInterval, Dst: &cfg.PinRecoverInterval, Name: "pin_recover_interval"},
+		&DurationOpt{Duration: cjson.MonitorPingInterval, Dst: &cfg.MonitorPingInterval, Name: "monitor_ping_interval"},
+		&DurationOpt{Duration: cjson.PeerWatchInterval, Dst: &cfg.PeerWatchInterval, Name: "peer_watch_interval"},
+		&DurationOpt{Duration: cjson.MDNSInterval, Dst: &cfg.MDNSInterval, Name: "mdns_interval"},
 	)
 	if err != nil {
 		return err
 	}
 
-	cfg.LeaveOnShutdown = jcfg.LeaveOnShutdown
-	cfg.DisableRepinning = jcfg.DisableRepinning
-	cfg.FollowerMode = jcfg.FollowerMode
+	cfg.LeaveOnShutdown = cjson.LeaveOnShutdown
+	cfg.DisableRepinning = cjson.DisableRepinning
+	cfg.FollowerMode = cjson.FollowerMode
 
 	return nil
 	//return cfg.Validate()
