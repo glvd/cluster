@@ -7,11 +7,16 @@ import (
 	"time"
 
 	"github.com/glvd/cluster/version"
+	"github.com/goextension/log"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/ipfs-cluster/pstoremgr"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/multiformats/go-multiaddr"
+	"go.opencensus.io/trace"
 )
 
 const (
@@ -25,12 +30,12 @@ type Cluster struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	id        peer.ID
-	config    *Config
-	datastore datastore.Datastore
-	host      host.Host
-	discovery discovery.Service
-	//peerManager *pstoremgr.Manager
+	id          peer.ID
+	config      *Config
+	datastore   datastore.Datastore
+	host        host.Host
+	discovery   discovery.Service
+	peerManager *pstoremgr.Manager
 }
 
 type Options func(cluster *Cluster)
@@ -166,7 +171,83 @@ func NewCluster(
 	return c, nil
 }
 
-func (c *Cluster) Join(ctx context.Context, multiaddr multiaddr.Multiaddr) error {
+func (c *Cluster) Join(ctx context.Context, addr multiaddr.Multiaddr) error {
+	_, span := trace.StartSpan(ctx, "cluster/Join")
+	defer span.End()
+	ctx = trace.NewContext(c.ctx, span)
+
+	log.Debugf("Join(%s)", addr)
+
+	// Add peer to peerstore so we can talk to it (and connect)
+	pid, err := c.peerManager.ImportPeer(addr, true, peerstore.PermanentAddrTTL)
+	if err != nil {
+		return err
+	}
+	if pid == c.id {
+		return nil
+	}
+
+	// Note that PeerAdd() on the remote peer will
+	// figure out what our real address is (obviously not
+	// ListenAddr).
+	var myID api.ID
+	err = c.rpcClient.CallContext(
+		ctx,
+		pid,
+		"Cluster",
+		"PeerAdd",
+		c.id,
+		&myID,
+	)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	// Log a fake but valid metric from the peer we are
+	// contacting. This will signal a CRDT component that
+	// we know that peer since we have metrics for it without
+	// having to wait for the next metric round.
+	if err := c.logPingMetric(ctx, pid); err != nil {
+		logger.Warning(err)
+	}
+
+	// Broadcast our metrics to the world
+	_, err = c.sendInformerMetric(ctx)
+	if err != nil {
+		logger.Warning(err)
+	}
+	_, err = c.sendPingMetric(ctx)
+	if err != nil {
+		logger.Warning(err)
+	}
+
+	// We need to trigger a DHT bootstrap asap for this peer to not be
+	// lost if the peer it bootstrapped to goes down. We do this manually
+	// by triggering 1 round of bootstrap in the background.
+	// Note that our regular bootstrap process is still running in the
+	// background since we created the cluster.
+	go func() {
+		c.dht.BootstrapOnce(ctx, dht.DefaultBootstrapConfig)
+	}()
+
+	// ConnectSwarms in the background after a while, when we have likely
+	// received some metrics.
+	time.AfterFunc(c.config.MonitorPingInterval, func() {
+		c.ipfs.ConnectSwarms(ctx)
+	})
+
+	// wait for leader and for state to catch up
+	// then sync
+	err = c.consensus.WaitForSync(ctx)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	c.StateSync(ctx)
+
+	logger.Infof("%s: joined %s's cluster", c.id.Pretty(), pid.Pretty())
 	return nil
 }
 
