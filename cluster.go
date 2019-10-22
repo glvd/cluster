@@ -10,7 +10,6 @@ import (
 	"github.com/glvd/cluster/version"
 	"github.com/goextension/log"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/ipfs-cluster/pstoremgr"
 	ocgorpc "github.com/lanzafame/go-libp2p-ocgorpc"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -38,7 +37,7 @@ type Cluster struct {
 	datastore   datastore.Datastore
 	host        host.Host
 	discovery   discovery.Service
-	peerManager *pstoremgr.Manager
+	peerManager *PeerManager
 	rpcServer   *rpc.Server
 	rpcClient   *rpc.Client
 }
@@ -213,44 +212,44 @@ func (c *Cluster) Join(ctx context.Context, addr multiaddr.Multiaddr) error {
 	// contacting. This will signal a CRDT component that
 	// we know that peer since we have metrics for it without
 	// having to wait for the next metric round.
-	if err := c.logPingMetric(ctx, pid); err != nil {
-		log.Warn(err)
-	}
+	//if err := c.logPingMetric(ctx, pid); err != nil {
+	//	log.Warn(err)
+	//}
 
 	// Broadcast our metrics to the world
-	_, err = c.sendInformerMetric(ctx)
-	if err != nil {
-		log.Warn(err)
-	}
-	_, err = c.sendPingMetric(ctx)
-	if err != nil {
-		log.Warning(err)
-	}
+	//_, err = c.sendInformerMetric(ctx)
+	//if err != nil {
+	//	log.Warn(err)
+	//}
+	//_, err = c.sendPingMetric(ctx)
+	//if err != nil {
+	//	log.Warning(err)
+	//}
 
 	// We need to trigger a DHT bootstrap asap for this peer to not be
 	// lost if the peer it bootstrapped to goes down. We do this manually
 	// by triggering 1 round of bootstrap in the background.
 	// Note that our regular bootstrap process is still running in the
 	// background since we created the cluster.
-	go func() {
-		c.dht.BootstrapOnce(ctx, dht.DefaultBootstrapConfig)
-	}()
+	//go func() {
+	//	c.dht.BootstrapOnce(ctx, dht.DefaultBootstrapConfig)
+	//}()
 
 	// ConnectSwarms in the background after a while, when we have likely
 	// received some metrics.
-	time.AfterFunc(c.config.MonitorPingInterval, func() {
-		c.ipfs.ConnectSwarms(ctx)
-	})
+	//time.AfterFunc(c.config.MonitorPingInterval, func() {
+	//	c.ipfs.ConnectSwarms(ctx)
+	//})
 
 	// wait for leader and for state to catch up
 	// then sync
-	err = c.consensus.WaitForSync(ctx)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
+	//err = c.consensus.WaitForSync(ctx)
+	//if err != nil {
+	//	log.Error(err)
+	//	return err
+	//}
 
-	c.StateSync(ctx)
+	//c.StateSync(ctx)
 
 	log.Infof("%s: joined %s's cluster", c.id.Pretty(), pid.Pretty())
 	return nil
