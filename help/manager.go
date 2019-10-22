@@ -2,12 +2,9 @@ package help
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"io/ioutil"
-	"path/filepath"
 	"sync"
-
-	"github.com/prometheus/common/log"
 )
 
 // Manager represents an ipfs-cluster configuration which bundles
@@ -43,7 +40,7 @@ type Manager struct {
 	// if a config has been loaded from disk, track the path
 	// so it can be saved to the same place.
 	//path    string
-	//saveMux sync.Mutex
+	saveMux sync.Mutex
 }
 
 // NewManager returns a correctly initialized Manager
@@ -141,4 +138,5 @@ func (m *Manager) ToJSON() ([]byte, error) {
 	//}
 	//
 	//return DefaultJSONMarshal(jcfg)
+	return nil, errors.New("implements me")
 }
