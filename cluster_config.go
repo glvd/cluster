@@ -151,6 +151,30 @@ type Config struct {
 	Tracing bool
 }
 
+func (cfg *Config) ConfigKey() string {
+	panic("implement me")
+}
+
+func (cfg *Config) ToJSON() ([]byte, error) {
+	panic("implement me")
+}
+
+func (cfg *Config) Default() error {
+	panic("implement me")
+}
+
+func (cfg *Config) ApplyEnvVars() error {
+	panic("implement me")
+}
+
+func (cfg *Config) SetBaseDir(string) {
+	panic("implement me")
+}
+
+func (cfg *Config) SaveCh() <-chan struct{} {
+	panic("implement me")
+}
+
 // configJSON represents a Cluster configuration as it will look when it is
 // saved using JSON. Most configuration keys are converted into simple types
 // like strings, and key names aim to be self-explanatory for the user.
@@ -174,6 +198,8 @@ type configJSON struct {
 	FollowerMode         bool               `json:"follower_mode,omitempty"`
 	PeerStoreFile        string             `json:"peerstore_file,omitempty"`
 }
+
+var ConfigPath string
 
 // Default fills in all the Config fields with
 // default working values. This means, it will
@@ -292,11 +318,11 @@ func isReplicationFactorValid(rplMin, rplMax int) error {
 }
 func isRPCPolicyValid(p map[string]RPCEndpointType) error {
 	rpcComponents := []interface{}{
-		&ClusterRPCAPI{},
-		&PinTrackerRPCAPI{},
-		&IPFSConnectorRPCAPI{},
-		&ConsensusRPCAPI{},
-		&PeerMonitorRPCAPI{},
+		&RPCAPI{},
+		//&PinTrackerRPCAPI{},
+		//&IPFSConnectorRPCAPI{},
+		//&ConsensusRPCAPI{},
+		//&PeerMonitorRPCAPI{},
 	}
 
 	total := 0
@@ -410,7 +436,7 @@ func DecodeClusterSecret(hexSecret string) ([]byte, error) {
 // with BaseDir of the configuration, if set.
 // An empty string is returned when BaseDir is not set.
 func (cfg *Config) GetPeerstorePath() string {
-	if cfg.BaseDir == "" {
+	if ConfigPath == "" {
 		return ""
 	}
 
@@ -419,5 +445,5 @@ func (cfg *Config) GetPeerstorePath() string {
 		filename = cfg.PeerstoreFile
 	}
 
-	return filepath.Join(cfg.BaseDir, filename)
+	return filepath.Join(ConfigPath, filename)
 }

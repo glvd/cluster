@@ -19,6 +19,7 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/ipfs-cluster v0.11.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/lanzafame/go-libp2p-ocgorpc v0.1.1
 	github.com/libp2p/go-libp2p v0.4.0
 	github.com/libp2p/go-libp2p-core v0.2.3
 	github.com/libp2p/go-libp2p-gorpc v0.1.0

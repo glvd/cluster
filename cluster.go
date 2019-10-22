@@ -4,15 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/glvd/cluster/version"
 	"github.com/ipfs/go-datastore"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
-	"github.com/ipfs/ipfs-cluster/pstoremgr"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/multiformats/go-multiaddr"
+)
+
+const (
+	pingMetricName      = "ping"
+	bootstrapCount      = 3
+	reBootstrapInterval = 30 * time.Second
+	mdnsServiceTag      = "_cluster-discovery._udp"
 )
 
 type Cluster struct {
@@ -22,8 +28,18 @@ type Cluster struct {
 	id        peer.ID
 	config    *Config
 	datastore datastore.Datastore
+	host      host.Host
+	discovery discovery.Service
+	//peerManager *pstoremgr.Manager
 }
+
 type Options func(cluster *Cluster)
+
+// ReadyTimeout specifies the time before giving up
+// during startup (waiting for consensus to be ready)
+// It may need adjustment according to timeouts in the
+// consensus layer.
+var ReadyTimeout = 30 * time.Second
 
 func DataStoreOption(datastore datastore.Datastore) Options {
 	return func(cluster *Cluster) {
@@ -70,79 +86,86 @@ func NewCluster(
 
 	log.Infof("IPFS Cluster v%s listening on:\n%s\n", version.Version, listenAddrs)
 
-	peerManager := pstoremgr.New(ctx, host, cfg.GetPeerstorePath())
+	//peerManager := pstoremgr.New(ctx, host, cfg.GetPeerstorePath())
 
-	var mdns discovery.Service
-	if cfg.MDNSInterval > 0 {
-		mdns, err := discovery.NewMdnsService(ctx, host, cfg.MDNSInterval, mdnsServiceTag)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		mdns.RegisterNotifee(peerManager)
-	}
+	//var mdns discovery.Service
+	//if cfg.MDNSInterval > 0 {
+	//	mdns, err := discovery.NewMdnsService(ctx, host, cfg.MDNSInterval, mdnsServiceTag)
+	//	if err != nil {
+	//		cancel()
+	//		return nil, err
+	//	}
+	//mdns.RegisterNotifee(peerManager)
+	//}
 
 	c := &Cluster{
-		ctx:         ctx,
-		cancel:      cancel,
-		id:          host.ID(),
-		config:      cfg,
-		host:        host,
-		dht:         dht,
-		discovery:   mdns,
-		datastore:   datastore,
-		consensus:   consensus,
-		apis:        apis,
-		ipfs:        ipfs,
-		tracker:     tracker,
-		monitor:     monitor,
-		allocator:   allocator,
-		informer:    informer,
-		tracer:      tracer,
-		peerManager: peerManager,
-		shutdownB:   false,
-		removed:     false,
-		doneCh:      make(chan struct{}),
-		readyCh:     make(chan struct{}),
-		readyB:      false,
+		ctx:    ctx,
+		cancel: cancel,
+		id:     host.ID(),
+		config: cfg,
+		host:   host,
+		//dht:         dht,
+		//discovery: mdns,
+		//datastore:   datastore,
+		//consensus:   consensus,
+		//apis:        apis,
+		//ipfs:        ipfs,
+		//tracker:     tracker,
+		//monitor:     monitor,
+		//allocator:   allocator,
+		//informer:    informer,
+		//tracer:      tracer,
+		//peerManager: peerManager,
+		//shutdownB:   false,
+		//removed:     false,
+		//doneCh:      make(chan struct{}),
+		//readyCh:     make(chan struct{}),
+		//readyB:      false,
 	}
 
+	for _, option := range options {
+		option(c)
+	}
 	// Import known cluster peers from peerstore file. Set
 	// a non permanent TTL.
-	c.peerManager.ImportPeersFromPeerstore(false, peerstore.AddressTTL)
+	//c.peerManager.ImportPeersFromPeerstore(false, peerstore.AddressTTL)
 	// Attempt to connect to some peers (up to bootstrapCount)
-	connectedPeers := c.peerManager.Bootstrap(bootstrapCount)
+	//connectedPeers := c.peerManager.Bootstrap(bootstrapCount)
 	// We cannot warn when count is low as this as this is normal if going
 	// to Join() later.
-	logger.Debugf("bootstrap count %d", len(connectedPeers))
+	//logger.Debugf("bootstrap count %d", len(connectedPeers))
 	// Log a ping metric for every connected peer. This will make them
 	// visible as peers without having to wait for them to send one.
-	for _, p := range connectedPeers {
-		if err := c.logPingMetric(ctx, p); err != nil {
-			logger.Warning(err)
-		}
-	}
+	//for _, p := range connectedPeers {
+	//	if err := c.logPingMetric(ctx, p); err != nil {
+	//		logger.Warning(err)
+	//	}
+	//}
 
 	// Bootstrap the DHT now that we possibly have some connections
-	c.dht.Bootstrap(c.ctx)
+	//c.dht.Bootstrap(c.ctx)
 
 	// After setupRPC components can do their tasks with a fully operative
 	// routed libp2p host with some connections and a working DHT (hopefully).
-	err = c.setupRPC()
-	if err != nil {
-		c.Shutdown(ctx)
-		return nil, err
-	}
-	c.setupRPCClients()
-
+	//err = c.setupRPC()
+	//if err != nil {
+	//	c.Shutdown(ctx)
+	//	return nil, err
+	//}
+	//c.setupRPCClients()
+	//
 	// Note: It is very important to first call Add() once in a non-racy
 	// place
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		c.ready(ReadyTimeout)
-		c.run()
-	}()
-
+	//c.wg.Add(1)
+	//go func() {
+	//	defer c.wg.Done()
+	//	c.ready(ReadyTimeout)
+	//	c.run()
+	//}()
+	//
 	return c, nil
+}
+
+func (cluster Cluster) Join(ctx context.Context, multiaddr multiaddr.Multiaddr) error {
+	return nil
 }

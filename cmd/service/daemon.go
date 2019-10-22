@@ -6,30 +6,19 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
+	"github.com/glvd/cluster"
+	ds "github.com/ipfs/go-datastore"
 	ipfscluster "github.com/ipfs/ipfs-cluster"
-	"github.com/ipfs/ipfs-cluster/allocator/descendalloc"
-	"github.com/ipfs/ipfs-cluster/api/ipfsproxy"
-	"github.com/ipfs/ipfs-cluster/api/rest"
 	"github.com/ipfs/ipfs-cluster/cmdutils"
-	"github.com/ipfs/ipfs-cluster/config"
 	"github.com/ipfs/ipfs-cluster/consensus/crdt"
 	"github.com/ipfs/ipfs-cluster/consensus/raft"
-	"github.com/ipfs/ipfs-cluster/informer/disk"
-	"github.com/ipfs/ipfs-cluster/ipfsconn/ipfshttp"
-	"github.com/ipfs/ipfs-cluster/monitor/pubsubmon"
-	"github.com/ipfs/ipfs-cluster/observations"
 	"github.com/ipfs/ipfs-cluster/pintracker/maptracker"
 	"github.com/ipfs/ipfs-cluster/pintracker/stateless"
-	"github.com/pkg/errors"
-	"go.opencensus.io/tag"
-
-	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/pkg/errors"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli"
@@ -74,103 +63,32 @@ func daemon(c *cli.Context) error {
 // (the datastore needs to be Closed after shutting down the Cluster).
 func createCluster(
 	ctx context.Context,
-	c *cli.Context,
-	cfgHelper *cmdutils.ConfigHelper,
+	//c *cli.Context,
 	host host.Host,
-	pubsub *pubsub.PubSub,
-	dht *dht.IpfsDHT,
-	raftStaging bool,
-) (*ipfscluster.Cluster, error) {
-
-	cfgs := cfgHelper.Configs()
-	cfgMgr := cfgHelper.Manager()
-
-	ctx, err := tag.New(ctx, tag.Upsert(observations.HostKey, host.ID().Pretty()))
-	checkErr("tag context with host id", err)
-
-	var apis []ipfscluster.API
-	if cfgMgr.IsLoadedFromJSON(config.API, cfgs.Restapi.ConfigKey()) {
-		rest, err := rest.NewAPIWithHost(ctx, cfgs.Restapi, host)
-		checkErr("creating REST API component", err)
-		apis = append(apis, rest)
-	}
-
-	if cfgMgr.IsLoadedFromJSON(config.API, cfgs.Ipfsproxy.ConfigKey()) {
-		proxy, err := ipfsproxy.New(cfgs.Ipfsproxy)
-		checkErr("creating IPFS Proxy component", err)
-
-		apis = append(apis, proxy)
-	}
-
-	connector, err := ipfshttp.NewConnector(cfgs.Ipfshttp)
-	checkErr("creating IPFS Connector component", err)
-
-	tracker := setupPinTracker(
-		c.String("pintracker"),
-		host,
-		cfgs.Maptracker,
-		cfgs.Statelesstracker,
-		cfgs.Cluster.Peername,
-	)
-
-	informer, err := disk.NewInformer(cfgs.Diskinf)
-	checkErr("creating disk informer", err)
-	alloc := descendalloc.NewAllocator()
-
-	ipfscluster.ReadyTimeout = cfgs.Raft.WaitForLeaderTimeout + 5*time.Second
-
-	err = observations.SetupMetrics(cfgs.Metrics)
-	checkErr("setting up Metrics", err)
-
-	tracer, err := observations.SetupTracing(cfgs.Tracing)
-	checkErr("setting up Tracing", err)
-
-	store := setupDatastore(cfgHelper)
-
-	cons, err := setupConsensus(
-		cfgHelper,
-		host,
-		dht,
-		pubsub,
-		store,
-		raftStaging,
-	)
-	if err != nil {
-		store.Close()
-		checkErr("setting up Consensus", err)
-	}
-
-	var peersF func(context.Context) ([]peer.ID, error)
-	if cfgHelper.GetConsensus() == cfgs.Raft.ConfigKey() {
-		peersF = cons.Peers
-	}
-
-	mon, err := pubsubmon.New(ctx, cfgs.Pubsubmon, pubsub, peersF)
-	if err != nil {
-		store.Close()
-		checkErr("setting up PeerMonitor", err)
-	}
-
-	return ipfscluster.NewCluster(
+	//pubsub *pubsub.PubSub,
+	//dht *dht.IpfsDHT,
+	//raftStaging bool,
+) (*cluster.Cluster, error) {
+	return cluster.NewCluster(
 		ctx,
 		host,
-		dht,
-		cfgs.Cluster,
-		store,
-		cons,
-		apis,
-		connector,
-		tracker,
-		mon,
-		alloc,
-		informer,
-		tracer,
+		//dht,
+		nil,
+		//store,
+		//cons,
+		//apis,
+		//connector,
+		//tracker,
+		//mon,
+		//alloc,
+		//informer,
+		//tracer,
 	)
 }
 
 // bootstrap will bootstrap this peer to one of the bootstrap addresses
 // if there are any.
-func bootstrap(ctx context.Context, cluster *ipfscluster.Cluster, bootstraps []multiaddr.Multiaddr) {
+func bootstrap(ctx context.Context, cluster *cluster.Cluster, bootstraps []multiaddr.Multiaddr) {
 	for _, bstrap := range bootstraps {
 		log.Infof("Bootstrapping to %s", bstrap)
 		err := cluster.Join(ctx, bstrap)
@@ -183,7 +101,7 @@ func bootstrap(ctx context.Context, cluster *ipfscluster.Cluster, bootstraps []m
 func handleSignals(
 	ctx context.Context,
 	cancel context.CancelFunc,
-	cluster *ipfscluster.Cluster,
+	cluster *cluster.Cluster,
 	host host.Host,
 	dht *dht.IpfsDHT,
 ) error {

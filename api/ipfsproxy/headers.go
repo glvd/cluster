@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/ipfs/ipfs-cluster/version"
 )
 
 // This file has the collection of header-related functions

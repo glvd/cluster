@@ -7,7 +7,6 @@ import (
 	"path"
 
 	fslock "github.com/ipfs/go-fs-lock"
-	"github.com/ipfs/ipfs-cluster/cmdutils"
 )
 
 // lock logic heavily inspired by go-ipfs/repo/fsrepo/lock/lock.go
