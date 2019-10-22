@@ -12,6 +12,7 @@ import (
 	ipfscluster "github.com/ipfs/ipfs-cluster"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli"
 )
@@ -39,7 +40,7 @@ func daemon(c *cli.Context) error {
 	locker.lock()
 	defer locker.tryUnlock()
 
-	host, pubsub, dht, err := ipfscluster.NewClusterHost(ctx, cfgHelper.Identity(), cfgs.Cluster)
+	host, pubsub, dht, err := ipfscluster.NewClusterHost(ctx, nil, nil)
 	checkErr("creating libp2p host", err)
 
 	var cluster, err = createCluster(ctx, host)
@@ -63,8 +64,8 @@ func createCluster(
 	ctx context.Context,
 	//c *cli.Context,
 	host host.Host,
-	//pubsub *pubsub.PubSub,
-	//dht *dht.IpfsDHT,
+	pubsub *pubsub.PubSub,
+	dht *dht.IpfsDHT,
 	//raftStaging bool,
 ) (*cluster.Cluster, error) {
 	config, e := cluster.DefaultConfig()
