@@ -6,6 +6,7 @@ import (
 	"io"
 	"path"
 
+	"github.com/goextension/log"
 	fslock "github.com/ipfs/go-fs-lock"
 )
 

@@ -9,9 +9,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/glvd/cluster/version"
-	"github.com/godcong/go-trait"
+	"github.com/goextension/log"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli"
+	"go.uber.org/zap"
 )
 
 // ProgramName of this application
@@ -24,7 +25,7 @@ const (
 
 var commit string
 
-var log = trait.NewZapSugar()
+//var log = trait.NewZapSugar()
 
 // Default location for the configurations and data
 var (
@@ -45,6 +46,14 @@ var (
 )
 
 func init() {
+	logger, e := zap.NewProduction(zap.AddCallerSkip(1))
+	if e != nil {
+		panic(e)
+	}
+	log.Register(logger.Sugar())
+
+	log.Info("init")
+
 	// Set build information.
 	if build, err := semver.NewBuildVersion(commit); err == nil {
 		version.Version.Build = []string{"git" + build}
@@ -224,7 +233,7 @@ the peer IDs in the given multiaddresses.
 
 				// Save config. Creates the folder.
 				// Sets BaseDir in components.
-				checkErr("saving default configuration", cfgHelper.SaveConfigToDisk())
+				//checkErr("saving default configuration", cfgHelper.SaveConfigToDisk())
 				//log.Errorf("configuration written to %s.\n", configPath)
 
 				//if !identityExists {

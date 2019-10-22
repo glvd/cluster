@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/glvd/cluster"
+	"github.com/goextension/log"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/multiformats/go-multiaddr"

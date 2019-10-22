@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/godcong/go-trait v0.0.0-20190816072228-f216e906756e
+	github.com/goextension/log v0.0.0-20191022085318-0dd180c59ffa
 	github.com/gogo/protobuf v1.3.0
 	github.com/golang/protobuf v1.3.2
 	github.com/gorilla/handlers v1.4.2
@@ -35,4 +36,5 @@ require (
 	github.com/ugorji/go/codec v1.1.7
 	github.com/urfave/cli v1.22.1
 	go.opencensus.io v0.22.1
+	go.uber.org/zap v1.10.0
 )
