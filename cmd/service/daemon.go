@@ -9,7 +9,6 @@ import (
 
 	"github.com/glvd/cluster"
 	"github.com/goextension/log"
-	ipfscluster "github.com/ipfs/ipfs-cluster"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -40,7 +39,7 @@ func daemon(c *cli.Context) error {
 	locker.lock()
 	defer locker.tryUnlock()
 
-	host, pubsub, dht, err := ipfscluster.NewClusterHost(ctx, nil, nil)
+	host, pubsub, dht, err := cluster.NewClusterHost(ctx, nil, nil)
 	checkErr("creating libp2p host", err)
 
 	cluster, err := createCluster(ctx, host, pubsub, dht)

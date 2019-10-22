@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/goextension/log"
-	"github.com/ipfs/ipfs-cluster/utils"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -136,7 +135,7 @@ func (p *PeerManager) filteredPeerAddresses(id peer.ID) []multiaddr.Multiaddr {
 		return pdnsas
 	}
 
-	sort.Sort(utils.ByString(pas))
+	sort.Sort(ByString(pas))
 	return pas
 }
 
