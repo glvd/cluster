@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/glvd/cluster/api"
 	"github.com/glvd/cluster/version"
 	"github.com/goextension/log"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/ipfs-cluster/pstoremgr"
+	ocgorpc "github.com/lanzafame/go-libp2p-ocgorpc"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	rpc "github.com/libp2p/go-libp2p-gorpc"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/multiformats/go-multiaddr"
@@ -36,6 +39,8 @@ type Cluster struct {
 	host        host.Host
 	discovery   discovery.Service
 	peerManager *pstoremgr.Manager
+	rpcServer   *rpc.Server
+	rpcClient   *rpc.Client
 }
 
 type Options func(cluster *Cluster)
@@ -138,12 +143,12 @@ func NewCluster(
 	//connectedPeers := c.peerManager.Bootstrap(bootstrapCount)
 	// We cannot warn when count is low as this as this is normal if going
 	// to Join() later.
-	//logger.Debugf("bootstrap count %d", len(connectedPeers))
+	//log.Debugf("bootstrap count %d", len(connectedPeers))
 	// Log a ping metric for every connected peer. This will make them
 	// visible as peers without having to wait for them to send one.
 	//for _, p := range connectedPeers {
 	//	if err := c.logPingMetric(ctx, p); err != nil {
-	//		logger.Warning(err)
+	//		log.Warning(err)
 	//	}
 	//}
 
@@ -200,7 +205,7 @@ func (c *Cluster) Join(ctx context.Context, addr multiaddr.Multiaddr) error {
 		&myID,
 	)
 	if err != nil {
-		logger.Error(err)
+		log.Error(err)
 		return err
 	}
 
@@ -209,17 +214,17 @@ func (c *Cluster) Join(ctx context.Context, addr multiaddr.Multiaddr) error {
 	// we know that peer since we have metrics for it without
 	// having to wait for the next metric round.
 	if err := c.logPingMetric(ctx, pid); err != nil {
-		logger.Warning(err)
+		log.Warn(err)
 	}
 
 	// Broadcast our metrics to the world
 	_, err = c.sendInformerMetric(ctx)
 	if err != nil {
-		logger.Warning(err)
+		log.Warn(err)
 	}
 	_, err = c.sendPingMetric(ctx)
 	if err != nil {
-		logger.Warning(err)
+		log.Warning(err)
 	}
 
 	// We need to trigger a DHT bootstrap asap for this peer to not be
@@ -241,13 +246,13 @@ func (c *Cluster) Join(ctx context.Context, addr multiaddr.Multiaddr) error {
 	// then sync
 	err = c.consensus.WaitForSync(ctx)
 	if err != nil {
-		logger.Error(err)
+		log.Error(err)
 		return err
 	}
 
 	c.StateSync(ctx)
 
-	logger.Infof("%s: joined %s's cluster", c.id.Pretty(), pid.Pretty())
+	log.Infof("%s: joined %s's cluster", c.id.Pretty(), pid.Pretty())
 	return nil
 }
 
@@ -258,5 +263,28 @@ func (c *Cluster) Done() <-chan struct{} {
 }
 
 func (c *Cluster) Shutdown(ctx context.Context) error {
+	return nil
+}
+
+func (c *Cluster) setupRPC() error {
+	rpcServer, err := newRPCServer(c)
+	if err != nil {
+		return err
+	}
+	c.rpcServer = rpcServer
+
+	var rpcClient *rpc.Client
+	if c.config.Tracing {
+		csh := &ocgorpc.ClientHandler{}
+		rpcClient = rpc.NewClientWithServer(
+			c.host,
+			version.RPCProtocol,
+			rpcServer,
+			rpc.WithClientStatsHandler(csh),
+		)
+	} else {
+		rpcClient = rpc.NewClientWithServer(c.host, version.RPCProtocol, rpcServer)
+	}
+	c.rpcClient = rpcClient
 	return nil
 }

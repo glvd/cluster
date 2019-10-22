@@ -3,7 +3,7 @@ package cluster
 import (
 	"github.com/ipfs/ipfs-cluster/version"
 
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 
 	ocgorpc "github.com/lanzafame/go-libp2p-ocgorpc"
