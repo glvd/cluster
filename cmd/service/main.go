@@ -52,7 +52,7 @@ func init() {
 	}
 	log.Register(logger.Sugar())
 
-	log.Info("init")
+	//log.Info("init")
 
 	// Set build information.
 	if build, err := semver.NewBuildVersion(commit); err == nil {
@@ -269,10 +269,10 @@ the peer IDs in the given multiaddresses.
 			Name:  "daemon",
 			Usage: "Runs the IPFS Cluster peer (default)",
 			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "upgrade, u",
-					Usage: "run state migrations before starting (deprecated/unused)",
-				},
+				//cli.BoolFlag{
+				//	Name:  "upgrade, u",
+				//	Usage: "run state migrations before starting (deprecated/unused)",
+				//},
 				cli.BoolFlag{
 					Name:  "stats",
 					Usage: "enable stats collection",
@@ -281,10 +281,10 @@ the peer IDs in the given multiaddresses.
 					Name:  "tracing",
 					Usage: "enable tracing collection",
 				},
-				cli.BoolFlag{
-					Name:  "no-trust",
-					Usage: "do not trust bootstrap peers (only for \"crdt\" consensus)",
-				},
+				//cli.BoolFlag{
+				//	Name:  "no-trust",
+				//	Usage: "do not trust bootstrap peers (only for \"crdt\" consensus)",
+				//},
 			},
 			Action: daemon,
 		},

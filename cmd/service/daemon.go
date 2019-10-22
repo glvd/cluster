@@ -9,6 +9,7 @@ import (
 
 	"github.com/glvd/cluster"
 	"github.com/goextension/log"
+	ipfscluster "github.com/ipfs/ipfs-cluster"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/multiformats/go-multiaddr"
@@ -30,13 +31,19 @@ func daemon(c *cli.Context) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var bootstraps []multiaddr.Multiaddr
-	if bootStr := c.String("bootstrap"); bootStr != "" {
-		bootstraps = parseBootstraps(strings.Split(bootStr, ","))
-	}
+	//if bootStr := c.String("bootstrap"); bootStr != "" {
+	//	bootstraps = parseBootstraps(strings.Split(bootStr, ","))
+	//}
 
 	// Execution lock
 	locker.lock()
 	defer locker.tryUnlock()
+
+	host, pubsub, dht, err := ipfscluster.NewClusterHost(ctx, cfgHelper.Identity(), cfgs.Cluster)
+	checkErr("creating libp2p host", err)
+
+	var cluster, err = createCluster(ctx, host)
+	checkErr("starting cluster", err)
 
 	// noop if no bootstraps
 	// if bootstrapping fails, consensus will never be ready
@@ -44,9 +51,9 @@ func daemon(c *cli.Context) error {
 	// avoid worrying about error handling here (since Cluster
 	// will realize).
 	//TODO:
-	go bootstrap(ctx, nil, bootstraps)
+	go bootstrap(ctx, cluster, bootstraps)
 
-	return handleSignals(ctx, cancel, nil, nil, nil)
+	return handleSignals(ctx, cancel, cluster, nil, nil)
 }
 
 // createCluster creates all the necessary things to produce the cluster
@@ -60,11 +67,15 @@ func createCluster(
 	//dht *dht.IpfsDHT,
 	//raftStaging bool,
 ) (*cluster.Cluster, error) {
+	config, e := cluster.DefaultConfig()
+	if e != nil {
+		return nil, e
+	}
 	return cluster.NewCluster(
 		ctx,
 		host,
+		config,
 		//dht,
-		nil,
 		//store,
 		//cons,
 		//apis,
