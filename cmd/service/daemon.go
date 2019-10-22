@@ -43,7 +43,7 @@ func daemon(c *cli.Context) error {
 	host, pubsub, dht, err := ipfscluster.NewClusterHost(ctx, nil, nil)
 	checkErr("creating libp2p host", err)
 
-	var cluster, err = createCluster(ctx, host)
+	cluster, err := createCluster(ctx, host, pubsub, dht)
 	checkErr("starting cluster", err)
 
 	// noop if no bootstraps
