@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -174,11 +173,6 @@ the peer IDs in the given multiaddresses.
 				},
 			},
 			Action: func(c *cli.Context) error {
-				consensus := c.String("consensus")
-				if consensus != "raft" && consensus != "crdt" {
-					checkErr("choosing consensus", errors.New("flag value must be set to 'raft' or 'crdt'"))
-				}
-
 				configExists := false
 				if _, err := os.Stat(configPath); !os.IsNotExist(err) {
 					configExists = true
@@ -230,7 +224,7 @@ the peer IDs in the given multiaddresses.
 
 				// Save config. Creates the folder.
 				// Sets BaseDir in components.
-				//checkErr("saving default configuration", cfgHelper.SaveConfigToDisk())
+				checkErr("saving default configuration", cfgHelper.SaveConfigToDisk())
 				//log.Errorf("configuration written to %s.\n", configPath)
 
 				//if !identityExists {

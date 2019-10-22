@@ -42,13 +42,6 @@ type ConnMgrConfig struct {
 	GracePeriod time.Duration
 }
 
-// connMgrConfigJSON configures the libp2p host connection manager.
-type connMgrConfigJSON struct {
-	HighWater   int    `json:"high_water"`
-	LowWater    int    `json:"low_water"`
-	GracePeriod string `json:"grace_period"`
-}
-
 type Config struct {
 	//config.Saver
 	//lock          sync.Mutex
@@ -150,28 +143,11 @@ type Config struct {
 	Tracing bool
 }
 
-func (cfg *Config) ConfigKey() string {
-	panic("implement me")
-}
-
-func (cfg *Config) ToJSON() ([]byte, error) {
-	panic("implement me")
-}
-
-func (cfg *Config) Default() error {
-	panic("implement me")
-}
-
-func (cfg *Config) ApplyEnvVars() error {
-	panic("implement me")
-}
-
-func (cfg *Config) SetBaseDir(string) {
-	panic("implement me")
-}
-
-func (cfg *Config) SaveCh() <-chan struct{} {
-	panic("implement me")
+// connMgrConfigJSON configures the libp2p host connection manager.
+type connMgrConfigJSON struct {
+	HighWater   int    `json:"high_water"`
+	LowWater    int    `json:"low_water"`
+	GracePeriod string `json:"grace_period"`
 }
 
 // configJSON represents a Cluster configuration as it will look when it is
