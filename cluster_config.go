@@ -1,9 +1,16 @@
 package cluster
 
 import (
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
+	"reflect"
 	"time"
 
+	"github.com/ipfs/ipfs-cluster/config"
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	"github.com/multiformats/go-multiaddr"
 )
@@ -34,6 +41,13 @@ type ConnMgrConfig struct {
 	HighWater   int
 	LowWater    int
 	GracePeriod time.Duration
+}
+
+// connMgrConfigJSON configures the libp2p host connection manager.
+type connMgrConfigJSON struct {
+	HighWater   int    `json:"high_water"`
+	LowWater    int    `json:"low_water"`
+	GracePeriod string `json:"grace_period"`
 }
 
 type Config struct {
@@ -137,6 +151,30 @@ type Config struct {
 	Tracing bool
 }
 
+// configJSON represents a Cluster configuration as it will look when it is
+// saved using JSON. Most configuration keys are converted into simple types
+// like strings, and key names aim to be self-explanatory for the user.
+type configJSON struct {
+	ID                   string             `json:"id,omitempty"`
+	PeerName             string             `json:"peername"`
+	PrivateKey           string             `json:"private_key,omitempty"`
+	Secret               string             `json:"secret"`
+	LeaveOnShutdown      bool               `json:"leave_on_shutdown"`
+	ListenMultiAddress   string             `json:"listen_multiaddress"`
+	ConnectionManager    *connMgrConfigJSON `json:"connection_manager"`
+	StateSyncInterval    string             `json:"state_sync_interval"`
+	IPFSSyncInterval     string             `json:"ipfs_sync_interval"`
+	PinRecoverInterval   string             `json:"pin_recover_interval"`
+	ReplicationFactorMin int                `json:"replication_factor_min"`
+	ReplicationFactorMax int                `json:"replication_factor_max"`
+	MonitorPingInterval  string             `json:"monitor_ping_interval"`
+	PeerWatchInterval    string             `json:"peer_watch_interval"`
+	MDNSInterval         string             `json:"mdns_interval"`
+	DisableRepinning     bool               `json:"disable_repinning"`
+	FollowerMode         bool               `json:"follower_mode,omitempty"`
+	PeerStoreFile        string             `json:"peerstore_file,omitempty"`
+}
+
 // Default fills in all the Config fields with
 // default working values. This means, it will
 // generate a Secret.
@@ -178,4 +216,208 @@ func DefaultConfig() (*Config, error) {
 		Tracing:              false,
 	}
 	return cfg, nil
+}
+
+// Validate will check that the values of this config
+// seem to be working ones.
+func (cfg *Config) Validate() error {
+	if cfg.ListenAddr == nil {
+		return errors.New("cluster.listen_multiaddress is undefined")
+	}
+
+	if cfg.ConnMgr.LowWater <= 0 {
+		return errors.New("cluster.connection_manager.low_water is invalid")
+	}
+
+	if cfg.ConnMgr.HighWater <= 0 {
+		return errors.New("cluster.connection_manager.high_water is invalid")
+	}
+
+	if cfg.ConnMgr.LowWater > cfg.ConnMgr.HighWater {
+		return errors.New("cluster.connection_manager.low_water is greater than high_water")
+	}
+
+	if cfg.ConnMgr.GracePeriod == 0 {
+		return errors.New("cluster.connection_manager.grace_period is invalid")
+	}
+
+	if cfg.StateSyncInterval <= 0 {
+		return errors.New("cluster.state_sync_interval is invalid")
+	}
+
+	if cfg.IPFSSyncInterval <= 0 {
+		return errors.New("cluster.ipfs_sync_interval is invalid")
+	}
+
+	if cfg.PinRecoverInterval <= 0 {
+		return errors.New("cluster.pin_recover_interval is invalid")
+	}
+
+	if cfg.MonitorPingInterval <= 0 {
+		return errors.New("cluster.monitoring_interval is invalid")
+	}
+
+	if cfg.PeerWatchInterval <= 0 {
+		return errors.New("cluster.peer_watch_interval is invalid")
+	}
+
+	if err := isReplicationFactorValid(cfg.ReplicationFactorMin, cfg.ReplicationFactorMax); err != nil {
+		return err
+	}
+
+	return isRPCPolicyValid(cfg.RPCPolicy)
+}
+func isReplicationFactorValid(rplMin, rplMax int) error {
+	// check Max and Min are correct
+	if rplMin == 0 || rplMax == 0 {
+		return errors.New("cluster.replication_factor_min and max must be set")
+	}
+
+	if rplMin > rplMax {
+		return errors.New("cluster.replication_factor_min is larger than max")
+	}
+
+	if rplMin < -1 {
+		return errors.New("cluster.replication_factor_min is wrong")
+	}
+
+	if rplMax < -1 {
+		return errors.New("cluster.replication_factor_max is wrong")
+	}
+
+	if (rplMin == -1 && rplMax != -1) || (rplMin != -1 && rplMax == -1) {
+		return errors.New("cluster.replication_factor_min and max must be -1 when one of them is")
+	}
+	return nil
+}
+func isRPCPolicyValid(p map[string]RPCEndpointType) error {
+	rpcComponents := []interface{}{
+		&ClusterRPCAPI{},
+		&PinTrackerRPCAPI{},
+		&IPFSConnectorRPCAPI{},
+		&ConsensusRPCAPI{},
+		&PeerMonitorRPCAPI{},
+	}
+
+	total := 0
+	for _, c := range rpcComponents {
+		t := reflect.TypeOf(c)
+		for i := 0; i < t.NumMethod(); i++ {
+			total++
+			method := t.Method(i)
+			name := fmt.Sprintf("%s.%s", RPCServiceID(c), method.Name)
+			_, ok := p[name]
+			if !ok {
+				return fmt.Errorf("RPCPolicy is missing the %s method", name)
+			}
+		}
+	}
+	if len(p) != total {
+		log.Warn("defined RPC policy has more entries than needed")
+	}
+	return nil
+}
+
+func (cfg *Config) LoadJSON(raw []byte) error {
+	jcfg := &configJSON{}
+	err := json.Unmarshal(raw, jcfg)
+	if err != nil {
+		log.Error("Error unmarshaling cluster config")
+		return err
+	}
+
+	return cfg.applyConfigJSON(jcfg)
+
+}
+
+func (cfg *Config) applyConfigJSON(jcfg *configJSON) error {
+	config.SetIfNotDefault(jcfg.PeerStoreFile, &cfg.PeerstoreFile)
+
+	config.SetIfNotDefault(jcfg.PeerName, &cfg.Peername)
+
+	clusterSecret, err := DecodeClusterSecret(jcfg.Secret)
+	if err != nil {
+		err = fmt.Errorf("error loading cluster secret from config: %s", err)
+		return err
+	}
+	cfg.Secret = clusterSecret
+
+	clusterAddr, err := multiaddr.NewMultiaddr(jcfg.ListenMultiAddress)
+	if err != nil {
+		err = fmt.Errorf("error parsing cluster_listen_multiaddress: %s", err)
+		return err
+	}
+	cfg.ListenAddr = clusterAddr
+
+	if conman := jcfg.ConnectionManager; conman != nil {
+		cfg.ConnMgr = &ConnMgrConfig{
+			HighWater: jcfg.ConnectionManager.HighWater,
+			LowWater:  jcfg.ConnectionManager.LowWater,
+		}
+		err = config.ParseDurations("cluster",
+			&config.DurationOpt{Duration: jcfg.ConnectionManager.GracePeriod, Dst: &cfg.ConnMgr.GracePeriod, Name: "connection_manager.grace_period"},
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	rplMin := jcfg.ReplicationFactorMin
+	rplMax := jcfg.ReplicationFactorMax
+	config.SetIfNotDefault(rplMin, &cfg.ReplicationFactorMin)
+	config.SetIfNotDefault(rplMax, &cfg.ReplicationFactorMax)
+
+	err = config.ParseDurations("cluster",
+		&config.DurationOpt{Duration: jcfg.StateSyncInterval, Dst: &cfg.StateSyncInterval, Name: "state_sync_interval"},
+		&config.DurationOpt{Duration: jcfg.IPFSSyncInterval, Dst: &cfg.IPFSSyncInterval, Name: "ipfs_sync_interval"},
+		&config.DurationOpt{Duration: jcfg.PinRecoverInterval, Dst: &cfg.PinRecoverInterval, Name: "pin_recover_interval"},
+		&config.DurationOpt{Duration: jcfg.MonitorPingInterval, Dst: &cfg.MonitorPingInterval, Name: "monitor_ping_interval"},
+		&config.DurationOpt{Duration: jcfg.PeerWatchInterval, Dst: &cfg.PeerWatchInterval, Name: "peer_watch_interval"},
+		&config.DurationOpt{Duration: jcfg.MDNSInterval, Dst: &cfg.MDNSInterval, Name: "mdns_interval"},
+	)
+	if err != nil {
+		return err
+	}
+
+	cfg.LeaveOnShutdown = jcfg.LeaveOnShutdown
+	cfg.DisableRepinning = jcfg.DisableRepinning
+	cfg.FollowerMode = jcfg.FollowerMode
+
+	return nil
+	//return cfg.Validate()
+}
+
+// DecodeClusterSecret parses a hex-encoded string, checks that it is exactly
+// 32 bytes long and returns its value as a byte-slice.x
+func DecodeClusterSecret(hexSecret string) ([]byte, error) {
+	secret, err := hex.DecodeString(hexSecret)
+	if err != nil {
+		return nil, err
+	}
+	switch secretLen := len(secret); secretLen {
+	case 0:
+		log.Warn("Cluster secret is empty, cluster will start on unprotected network.")
+		return nil, nil
+	case 32:
+		return secret, nil
+	default:
+		return nil, fmt.Errorf("input secret is %d bytes, cluster secret should be 32", secretLen)
+	}
+}
+
+// GetPeerstorePath returns the full path of the
+// PeerstoreFile, obtained by concatenating that value
+// with BaseDir of the configuration, if set.
+// An empty string is returned when BaseDir is not set.
+func (cfg *Config) GetPeerstorePath() string {
+	if cfg.BaseDir == "" {
+		return ""
+	}
+
+	filename := DefaultPeerstoreFile
+	if cfg.PeerstoreFile != "" {
+		filename = cfg.PeerstoreFile
+	}
+
+	return filepath.Join(cfg.BaseDir, filename)
 }

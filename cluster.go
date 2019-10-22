@@ -7,6 +7,7 @@ import (
 
 	"github.com/glvd/cluster/version"
 	"github.com/ipfs/go-datastore"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/ipfs-cluster/pstoremgr"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,8 +19,16 @@ type Cluster struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	id     peer.ID
-	config *Config
+	id        peer.ID
+	config    *Config
+	datastore datastore.Datastore
+}
+type Options func(cluster *Cluster)
+
+func DataStoreOption(datastore datastore.Datastore) Options {
+	return func(cluster *Cluster) {
+		cluster.datastore = datastore
+	}
 }
 
 // NewCluster builds a new IPFS Cluster peer. It initializes a LibP2P host,
@@ -31,18 +40,18 @@ type Cluster struct {
 func NewCluster(
 	ctx context.Context,
 	host host.Host,
-	dht *dht.IpfsDHT,
+	//dht *dht.IpfsDHT,
 	cfg *Config,
-	datastore datastore.Datastore,
+	//datastore datastore.Datastore,
 	//consensus Consensus,
-	apis []API,
-	ipfs IPFSConnector,
-	tracker PinTracker,
-	monitor PeerMonitor,
-	allocator PinAllocator,
-	informer Informer,
-	tracer Tracer,
-) (*Cluster, error) {
+	//apis []API,
+	//	api *httpapi.HttpApi,
+	//	tracker PinTracker,
+	//	monitor PeerMonitor,
+	//	allocator PinAllocator,
+	//	informer Informer,
+	//	tracer Tracer,
+	options ...Options) (*Cluster, error) {
 	err := cfg.Validate()
 	if err != nil {
 		return nil, err
