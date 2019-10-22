@@ -26,8 +26,8 @@ var PriorityTag = "cluster"
 
 // Timeouts for network operations triggered by the PeerManager.
 var (
-	DNSTimeout     = 5 * time.Second
-	ConnectTimeout = 5 * time.Second
+	PeerManagerDNSTimeout = 5 * time.Second
+	ConnectTimeout        = 5 * time.Second
 )
 
 // PeerManager provides utilities for handling cluster peer addresses
@@ -63,7 +63,7 @@ func (p *PeerManager) ImportPeer(addr multiaddr.Multiaddr, connect bool, ttl tim
 	if len(protos) > 0 && protos[0].Code == madns.DnsaddrProtocol.Code {
 		// We need to pre-resolve this
 		log.Debugf("resolving %s", addr)
-		ctx, cancel := context.WithTimeout(p.ctx, DNSTimeout)
+		ctx, cancel := context.WithTimeout(p.ctx, PeerManagerDNSTimeout)
 		defer cancel()
 
 		resolvedAddrs, err := madns.Resolve(ctx, addr)

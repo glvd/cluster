@@ -60,13 +60,9 @@ func daemon(c *cli.Context) error {
 // createCluster creates all the necessary things to produce the cluster
 // object and returns it along the datastore so the lifecycle can be handled
 // (the datastore needs to be Closed after shutting down the Cluster).
-func createCluster(
-	ctx context.Context,
-	//c *cli.Context,
-	host host.Host,
-	pubsub *pubsub.PubSub,
-	dht *dht.IpfsDHT,
-	//raftStaging bool,
+func createCluster(ctx context.Context /*c *cli.Context*/, host host.Host, pubsub *pubsub.PubSub, dht *dht.IpfsDHT,
+
+//raftStaging bool,
 ) (*cluster.Cluster, error) {
 	config, e := cluster.DefaultConfig()
 	if e != nil {
