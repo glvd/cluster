@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/goextension/log"
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	"github.com/multiformats/go-multiaddr"
 )
@@ -69,7 +70,7 @@ type Config struct {
 
 	// ConnMgr holds configuration values for the connection manager for
 	// the libp2p host.
-	// FIXME: This only applies to ipfs-cluster-service.
+	// FIXME: This only applies to cluster-service.
 	ConnMgr *ConnMgrConfig
 
 	// Time between syncs of the consensus state to the

@@ -414,7 +414,7 @@ to all effects. Peers may need to bootstrap and sync from scratch after this.
 		},
 		{
 			Name:  "version",
-			Usage: "Prints the ipfs-cluster version",
+			Usage: "Prints the cluster version",
 			Action: func(c *cli.Context) error {
 				fmt.Printf("%s\n", version.Version)
 				return nil
