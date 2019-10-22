@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/glvd/cluster/version"
 	"github.com/godcong/go-trait"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli"
 )
@@ -33,7 +31,7 @@ var log = trait.NewZapSugar()
 var (
 	// DefaultFolder is the name of the cluster folder
 	DefaultFolder = ".cluster"
-	// DefaultPath is set on init() to $HOME/DefaultFolder
+	// DefaultPath is set on init() to $CD/DefaultFolder
 	// and holds all the cluster data
 	DefaultPath string
 	// The name of the configuration file inside DefaultPath
@@ -53,20 +51,23 @@ func init() {
 		version.Version.Build = []string{"git" + build}
 	}
 
-	// We try guessing user's home from the HOME variable. This
+	// We try guessing app's current dir. if has errors
+	// try guessing user's home from the HOME variable. This
 	// allows HOME hacks for things like Snapcraft builds. HOME
 	// should be set in all UNIX by the OS. Alternatively, we fall back to
 	// usr.HomeDir (which should work on Windows etc.).
-	home := os.Getenv("HOME")
-	if home == "" {
-		usr, err := user.Current()
-		if err != nil {
-			panic(fmt.Sprintf("cannot get current user: %s", err))
+	dir, err := os.Getwd()
+	if err != nil {
+		dir := os.Getenv("HOME")
+		if dir == "" {
+			usr, err := user.Current()
+			if err != nil {
+				panic(fmt.Sprintf("cannot get current user: %s", err))
+			}
+			dir = usr.HomeDir
 		}
-		home = usr.HomeDir
 	}
-
-	DefaultPath = filepath.Join(home, DefaultFolder)
+	DefaultPath = filepath.Join(dir, DefaultFolder)
 }
 
 func checkErr(doing string, err error, args ...interface{}) {
@@ -95,14 +96,14 @@ func main() {
 			Usage:  "path to the configuration and data `FOLDER`",
 			EnvVar: "CLUSTER_PATH",
 		},
-		cli.BoolFlag{
-			Name:  "force, f",
-			Usage: "forcefully proceed with some actions. i.e. overwriting configuration",
-		},
-		cli.BoolFlag{
-			Name:  "debug, d",
-			Usage: "enable full debug logging (very verbose)",
-		},
+		//cli.BoolFlag{
+		//	Name:  "force, f",
+		//	Usage: "forcefully proceed with some actions. i.e. overwriting configuration",
+		//},
+		//cli.BoolFlag{
+		//	Name:  "debug, d",
+		//	Usage: "enable full debug logging (very verbose)",
+		//},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -178,9 +179,6 @@ the peer IDs in the given multiaddresses.
 					checkErr("choosing consensus", errors.New("flag value must be set to 'raft' or 'crdt'"))
 				}
 
-				cfgHelper := cmdutils.NewConfigHelper(configPath, identityPath, consensus)
-				defer cfgHelper.Manager().Shutdown() // wait for saves
-
 				configExists := false
 				if _, err := os.Stat(configPath); !os.IsNotExist(err) {
 					configExists = true
@@ -212,21 +210,6 @@ the peer IDs in the given multiaddresses.
 					}
 				}
 
-				// Set url. If exists, it will be the only thing saved.
-				cfgHelper.Manager().Source = c.Args().First()
-
-				// Generate defaults for all registered components
-				err := cfgHelper.Manager().Default()
-				checkErr("generating default configuration", err)
-				err = cfgHelper.Manager().ApplyEnvVars()
-				checkErr("applying environment variables to configuration", err)
-
-				//userSecret, userSecretDefined := userProvidedSecret(c.Bool("custom-secret") && !c.Args().Present())
-				// Set user secret
-				//if userSecretDefined {
-				//	cfgHelper.Configs().Cluster.Secret = userSecret
-				//}
-
 				peersOpt := c.String("peers")
 				var multiAddrs []multiaddr.Multiaddr
 				if peersOpt != "" {
@@ -239,42 +222,42 @@ the peer IDs in the given multiaddresses.
 						multiAddrs = append(multiAddrs, multiAddr)
 					}
 
-					peers := ipfscluster.PeersFromMultiaddrs(multiAddrs)
-					cfgHelper.Configs().Crdt.TrustAll = false
-					cfgHelper.Configs().Crdt.TrustedPeers = peers
-					cfgHelper.Configs().Raft.InitPeerset = peers
+					//peers := ipfscluster.PeersFromMultiaddrs(multiAddrs)
+					//cfgHelper.Configs().Crdt.TrustAll = false
+					//cfgHelper.Configs().Crdt.TrustedPeers = peers
+					//cfgHelper.Configs().Raft.InitPeerset = peers
 				}
 
 				// Save config. Creates the folder.
 				// Sets BaseDir in components.
-				checkErr("saving default configuration", cfgHelper.SaveConfigToDisk())
-				log.Errorf("configuration written to %s.\n", configPath)
+				//checkErr("saving default configuration", cfgHelper.SaveConfigToDisk())
+				//log.Errorf("configuration written to %s.\n", configPath)
 
-				if !identityExists {
-					ident := cfgHelper.Identity()
-					err := ident.Default()
-					checkErr("generating an identity", err)
-
-					err = ident.ApplyEnvVars()
-					checkErr("applying environment variables to the identity", err)
-
-					err = cfgHelper.SaveIdentityToDisk()
-					checkErr("saving "+DefaultIdentityFile, err)
-					log.Errorf("new identity written to %s\n", identityPath)
-				}
+				//if !identityExists {
+				//	ident := cfgHelper.Identity()
+				//	err := ident.Default()
+				//	checkErr("generating an identity", err)
+				//
+				//	err = ident.ApplyEnvVars()
+				//	checkErr("applying environment variables to the identity", err)
+				//
+				//	err = cfgHelper.SaveIdentityToDisk()
+				//	checkErr("saving "+DefaultIdentityFile, err)
+				//	log.Errorf("new identity written to %s\n", identityPath)
+				//}
 
 				// Initialize peerstore file - even if empty
-				peerstorePath := cfgHelper.Configs().Cluster.GetPeerstorePath()
-				peerManager := pstoremgr.New(context.Background(), nil, peerstorePath)
-				addrInfos, err := peer.AddrInfosFromP2pAddrs(multiAddrs...)
-				checkErr("getting AddrInfos from peer multiaddresses", err)
-				err = peerManager.SavePeerstore(addrInfos)
-				checkErr("saving peers to peerstore", err)
-				if l := len(multiAddrs); l > 0 {
-					log.Errorf("peerstore written to %s with %d entries.\n", peerstorePath, len(multiAddrs))
-				} else {
-					log.Errorf("new empty peerstore written to %s.\n", peerstorePath)
-				}
+				//peerstorePath := cfgHelper.Configs().Cluster.GetPeerstorePath()
+				//peerManager := pstoremgr.New(context.Background(), nil, peerstorePath)
+				//addrInfos, err := peer.AddrInfosFromP2pAddrs(multiAddrs...)
+				//checkErr("getting AddrInfos from peer multiaddresses", err)
+				//err = peerManager.SavePeerstore(addrInfos)
+				//checkErr("saving peers to peerstore", err)
+				//if l := len(multiAddrs); l > 0 {
+				//	log.Errorf("peerstore written to %s with %d entries.\n", peerstorePath, len(multiAddrs))
+				//} else {
+				//	log.Errorf("new empty peerstore written to %s.\n", peerstorePath)
+				//}
 
 				return nil
 			},

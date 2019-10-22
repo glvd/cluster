@@ -8,18 +8,8 @@ import (
 	"syscall"
 
 	"github.com/glvd/cluster"
-	ds "github.com/ipfs/go-datastore"
-	ipfscluster "github.com/ipfs/ipfs-cluster"
-	"github.com/ipfs/ipfs-cluster/cmdutils"
-	"github.com/ipfs/ipfs-cluster/consensus/crdt"
-	"github.com/ipfs/ipfs-cluster/consensus/raft"
-	"github.com/ipfs/ipfs-cluster/pintracker/maptracker"
-	"github.com/ipfs/ipfs-cluster/pintracker/stateless"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/pkg/errors"
-
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli"
 )
@@ -128,7 +118,7 @@ func handleSignals(
 	}
 }
 
-func handleCtrlC(ctx context.Context, cluster *ipfscluster.Cluster, ctrlcCount int) {
+func handleCtrlC(ctx context.Context, cluster *cluster.Cluster, ctrlcCount int) {
 	switch ctrlcCount {
 	case 1:
 		go func() {
@@ -150,75 +140,5 @@ Note that this may corrupt the local cluster state.
 		log.Error("exiting cluster NOW")
 		locker.tryUnlock()
 		os.Exit(-1)
-	}
-}
-
-func setupPinTracker(
-	name string,
-	h host.Host,
-	mapCfg *maptracker.Config,
-	statelessCfg *stateless.Config,
-	peerName string,
-) ipfscluster.PinTracker {
-	switch name {
-	case "map":
-		ptrk := maptracker.NewMapPinTracker(mapCfg, h.ID(), peerName)
-		log.Debug("map pintracker loaded")
-		return ptrk
-	case "stateless":
-		ptrk := stateless.New(statelessCfg, h.ID(), peerName)
-		log.Debug("stateless pintracker loaded")
-		return ptrk
-	default:
-		err := errors.New("unknown pintracker type")
-		checkErr("", err)
-		return nil
-	}
-}
-
-func setupDatastore(cfgHelper *cmdutils.ConfigHelper) ds.Datastore {
-	stmgr, err := cmdutils.NewStateManager(cfgHelper.GetConsensus(), cfgHelper.Identity(), cfgHelper.Configs())
-	checkErr("creating state manager", err)
-	store, err := stmgr.GetStore()
-	checkErr("creating datastore", err)
-	return store
-}
-
-func setupConsensus(
-	cfgHelper *cmdutils.ConfigHelper,
-	h host.Host,
-	dht *dht.IpfsDHT,
-	pubsub *pubsub.PubSub,
-	store ds.Datastore,
-	raftStaging bool,
-) (ipfscluster.Consensus, error) {
-
-	cfgs := cfgHelper.Configs()
-	switch cfgHelper.GetConsensus() {
-	case cfgs.Raft.ConfigKey():
-		rft, err := raft.NewConsensus(
-			h,
-			cfgHelper.Configs().Raft,
-			store,
-			raftStaging,
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating Raft component")
-		}
-		return rft, nil
-	case cfgs.Crdt.ConfigKey():
-		convrdt, err := crdt.New(
-			h,
-			dht,
-			pubsub,
-			cfgHelper.Configs().Crdt,
-			store,
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating CRDT component")
-		}
-		return convrdt, nil
-	default:
-		return nil, errors.New("unknown consensus component")
 	}
 }

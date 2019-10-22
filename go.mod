@@ -26,15 +26,11 @@ require (
 	github.com/libp2p/go-libp2p-gostream v0.1.2
 	github.com/libp2p/go-libp2p-http v0.1.3
 	github.com/libp2p/go-libp2p-kad-dht v0.2.1
-	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-pnet v0.1.0
-	github.com/libp2p/go-libp2p-protocol v0.1.0
-	github.com/libp2p/go-libp2p-pubsub v0.1.1
 	github.com/libp2p/go-ws-transport v0.1.2
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/multiformats/go-multiaddr-dns v0.1.0
 	github.com/multiformats/go-multiaddr-net v0.1.0
-	github.com/pkg/errors v0.8.1
 	github.com/rs/cors v1.6.0
 	github.com/ugorji/go/codec v1.1.7
 	github.com/urfave/cli v1.22.1

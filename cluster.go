@@ -166,6 +166,16 @@ func NewCluster(
 	return c, nil
 }
 
-func (cluster Cluster) Join(ctx context.Context, multiaddr multiaddr.Multiaddr) error {
+func (c *Cluster) Join(ctx context.Context, multiaddr multiaddr.Multiaddr) error {
+	return nil
+}
+
+// Done provides a way to learn if the Peer has been shutdown
+// (for example, because it has been removed from the Cluster)
+func (c *Cluster) Done() <-chan struct{} {
+	return nil
+}
+
+func (c *Cluster) Shutdown(ctx context.Context) error {
 	return nil
 }

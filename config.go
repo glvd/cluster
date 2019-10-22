@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ipfs/ipfs-cluster/config"
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	"github.com/multiformats/go-multiaddr"
 )
@@ -357,9 +356,9 @@ func (cfg *Config) LoadJSON(raw []byte) error {
 }
 
 func (cfg *Config) applyConfigJSON(jcfg *configJSON) error {
-	config.SetIfNotDefault(jcfg.PeerStoreFile, &cfg.PeerstoreFile)
+	SetIfNotDefault(jcfg.PeerStoreFile, &cfg.PeerstoreFile)
 
-	config.SetIfNotDefault(jcfg.PeerName, &cfg.Peername)
+	SetIfNotDefault(jcfg.PeerName, &cfg.Peername)
 
 	clusterSecret, err := DecodeClusterSecret(jcfg.Secret)
 	if err != nil {
@@ -380,8 +379,8 @@ func (cfg *Config) applyConfigJSON(jcfg *configJSON) error {
 			HighWater: jcfg.ConnectionManager.HighWater,
 			LowWater:  jcfg.ConnectionManager.LowWater,
 		}
-		err = config.ParseDurations("cluster",
-			&config.DurationOpt{Duration: jcfg.ConnectionManager.GracePeriod, Dst: &cfg.ConnMgr.GracePeriod, Name: "connection_manager.grace_period"},
+		err = ParseDurations("cluster",
+			&DurationOpt{Duration: jcfg.ConnectionManager.GracePeriod, Dst: &cfg.ConnMgr.GracePeriod, Name: "connection_manager.grace_period"},
 		)
 		if err != nil {
 			return err
@@ -390,16 +389,16 @@ func (cfg *Config) applyConfigJSON(jcfg *configJSON) error {
 
 	rplMin := jcfg.ReplicationFactorMin
 	rplMax := jcfg.ReplicationFactorMax
-	config.SetIfNotDefault(rplMin, &cfg.ReplicationFactorMin)
-	config.SetIfNotDefault(rplMax, &cfg.ReplicationFactorMax)
+	SetIfNotDefault(rplMin, &cfg.ReplicationFactorMin)
+	SetIfNotDefault(rplMax, &cfg.ReplicationFactorMax)
 
-	err = config.ParseDurations("cluster",
-		&config.DurationOpt{Duration: jcfg.StateSyncInterval, Dst: &cfg.StateSyncInterval, Name: "state_sync_interval"},
-		&config.DurationOpt{Duration: jcfg.IPFSSyncInterval, Dst: &cfg.IPFSSyncInterval, Name: "ipfs_sync_interval"},
-		&config.DurationOpt{Duration: jcfg.PinRecoverInterval, Dst: &cfg.PinRecoverInterval, Name: "pin_recover_interval"},
-		&config.DurationOpt{Duration: jcfg.MonitorPingInterval, Dst: &cfg.MonitorPingInterval, Name: "monitor_ping_interval"},
-		&config.DurationOpt{Duration: jcfg.PeerWatchInterval, Dst: &cfg.PeerWatchInterval, Name: "peer_watch_interval"},
-		&config.DurationOpt{Duration: jcfg.MDNSInterval, Dst: &cfg.MDNSInterval, Name: "mdns_interval"},
+	err = ParseDurations("cluster",
+		&DurationOpt{Duration: jcfg.StateSyncInterval, Dst: &cfg.StateSyncInterval, Name: "state_sync_interval"},
+		&DurationOpt{Duration: jcfg.IPFSSyncInterval, Dst: &cfg.IPFSSyncInterval, Name: "ipfs_sync_interval"},
+		&DurationOpt{Duration: jcfg.PinRecoverInterval, Dst: &cfg.PinRecoverInterval, Name: "pin_recover_interval"},
+		&DurationOpt{Duration: jcfg.MonitorPingInterval, Dst: &cfg.MonitorPingInterval, Name: "monitor_ping_interval"},
+		&DurationOpt{Duration: jcfg.PeerWatchInterval, Dst: &cfg.PeerWatchInterval, Name: "peer_watch_interval"},
+		&DurationOpt{Duration: jcfg.MDNSInterval, Dst: &cfg.MDNSInterval, Name: "mdns_interval"},
 	)
 	if err != nil {
 		return err
@@ -446,4 +445,78 @@ func (cfg *Config) GetPeerstorePath() string {
 	}
 
 	return filepath.Join(ConfigPath, filename)
+}
+
+// DefaultJSONMarshal produces pretty JSON with 2-space indentation
+func DefaultJSONMarshal(v interface{}) ([]byte, error) {
+	bs, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return bs, nil
+}
+
+// SetIfNotDefault sets dest to the value of src if src is not the default
+// value of the type.
+// dest must be a pointer.
+func SetIfNotDefault(src interface{}, dest interface{}) {
+	switch src.(type) {
+	case time.Duration:
+		t := src.(time.Duration)
+		if t != 0 {
+			*dest.(*time.Duration) = t
+		}
+	case string:
+		str := src.(string)
+		if str != "" {
+			*dest.(*string) = str
+		}
+	case uint64:
+		n := src.(uint64)
+		if n != 0 {
+			*dest.(*uint64) = n
+		}
+	case int:
+		n := src.(int)
+		if n != 0 {
+			*dest.(*int) = n
+		}
+	case bool:
+		b := src.(bool)
+		if b {
+			*dest.(*bool) = b
+		}
+	}
+}
+
+// DurationOpt provides a datatype to use with ParseDurations
+type DurationOpt struct {
+	// The duration we need to parse
+	Duration string
+	// Where to store the result
+	Dst *time.Duration
+	// A variable name associated to it for helpful errors.
+	Name string
+}
+
+// ParseDurations takes a time.Duration src and saves it to the given dst.
+func ParseDurations(component string, args ...*DurationOpt) error {
+	for _, arg := range args {
+		if arg.Duration == "" {
+			// don't do anything. Let the destination field
+			// stay at its default.
+			continue
+		}
+		t, err := time.ParseDuration(arg.Duration)
+		if err != nil {
+			return fmt.Errorf(
+				"error parsing %s.%s: %s",
+				component,
+				arg.Name,
+				err,
+			)
+		}
+		*arg.Dst = t
+	}
+	return nil
 }
