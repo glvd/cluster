@@ -1,12 +1,12 @@
 # go source files
 SRC := $(shell find .. -type f -name '*.go')
 
-all: ipfs-cluster-ctl
+all: cluster-ctrl
 
-ipfs-cluster-ctl: $(SRC)
+cluster-ctrl: $(SRC)
 	go build
 
-build: ipfs-cluster-ctl
+build: cluster-ctrl
 
 install:
 	go install

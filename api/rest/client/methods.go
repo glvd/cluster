@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/multiformats/go-multiaddr"
 	"net/url"
 	"os"
 	"path"
@@ -50,11 +51,11 @@ func (c *defaultClient) Peers(ctx context.Context) ([]*api.ID, error) {
 	return ids, err
 }
 
-func (c *defaultClient) PeerJoin(ctx context.Context, s string) (*api.ID, error) {
+func (c *defaultClient) PeerJoin(ctx context.Context, addr multiaddr.Multiaddr) (*api.ID, error) {
 	ctx, span := trace.StartSpan(ctx, "client/PeerJoin")
 	defer span.End()
 
-	body := peerJoinBody{s}
+	body := peerJoinBody{addr.String()}
 
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -62,7 +63,7 @@ func (c *defaultClient) PeerJoin(ctx context.Context, s string) (*api.ID, error)
 		return nil, err
 	}
 	var id api.ID
-	err := c.do(ctx, "UPDATE", "/peers", nil, &buf, &id)
+	err := c.do(ctx, "PUT", "/peers", nil, &buf, &id)
 	return &id, err
 }
 

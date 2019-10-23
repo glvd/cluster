@@ -15,21 +15,21 @@ import (
 	"github.com/glvd/cluster/api"
 	"github.com/glvd/cluster/api/rest/client"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
-	uuid "github.com/google/uuid"
-	cli "github.com/urfave/cli"
+	"github.com/google/uuid"
+	"github.com/urfave/cli"
 )
 
-const programName = `ipfs-cluster-ctl`
+const programName = `cluster-ctrl`
 
 // Version is the cluster-ctl tool version. It should match
 // the IPFS cluster's version
-const Version = "0.11.0"
+const Version = "0.0.1"
 
 var (
 	defaultHost          = "/ip4/127.0.0.1/tcp/9094"
@@ -233,7 +233,7 @@ This command provides a list of the ID information of all the peers in the Clust
 					},
 				},
 				{
-					Name:  "joint",
+					Name:  "join",
 					Usage: "join the nodes participating in the IPFS Cluster",
 					Description: `
 This command provides join the nodes participating in the Cluster.
@@ -247,13 +247,7 @@ This command provides join the nodes participating in the Cluster.
 							checkErr("parsing bootstrap multiaddress", fmt.Errorf("%w:(%s)", err, arg))
 							return err
 						}
-						//addrInfo, err := peer.AddrInfoFromP2pAddr(bAddr)
-						//if err != nil {
-						//	checkErr("parsing multiaddress info from p2p address", fmt.Errorf("%w:(%s)", err, arg))
-						//	return err
-						//}
-						//fmt.Printf("address:%+v\n", addrInfo.Addrs)
-						resp, cerr := globalClient.PeerJoin(ctx, bAddr.String())
+						resp, cerr := globalClient.PeerJoin(ctx, bAddr)
 						formatResponse(c, resp, cerr)
 						return nil
 					},

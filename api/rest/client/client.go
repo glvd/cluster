@@ -18,7 +18,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
 	madns "github.com/multiformats/go-multiaddr-dns"
 	manet "github.com/multiformats/go-multiaddr-net"
 
@@ -51,8 +51,8 @@ type Client interface {
 
 	// Peers requests ID information for all cluster peers.
 	Peers(context.Context) ([]*api.ID, error)
-
-	PeerJoin(ctx context.Context, s string) (*api.ID, error)
+	// PeerJoin add a peer join to the cluster.
+	PeerJoin(ctx context.Context, addr multiaddr.Multiaddr) (*api.ID, error)
 	// PeerAdd adds a new peer to the cluster.
 	PeerAdd(ctx context.Context, pid peer.ID) (*api.ID, error)
 	// PeerRm removes a current peer from the cluster
@@ -140,7 +140,7 @@ type Config struct {
 	// an /ipfs/, /p2p/ or /dnsaddr, the API will be contacted
 	// through a libp2p tunnel, thus getting encryption for
 	// free. Using the libp2p tunnel will ignore any configurations.
-	APIAddr ma.Multiaddr
+	APIAddr multiaddr.Multiaddr
 
 	// REST API endpoint host and port. Only valid without
 	// APIAddr.
@@ -156,7 +156,7 @@ type Config struct {
 	// to the ipfs proxy endpoint of ipfs-cluster. If empty, the location
 	// will be guessed from one of APIAddr/Host,
 	// and the port used will be ipfs-cluster's proxy default port (9095)
-	ProxyAddr ma.Multiaddr
+	ProxyAddr multiaddr.Multiaddr
 
 	// Define timeout for network operations
 	Timeout time.Duration
@@ -233,11 +233,11 @@ func (c *defaultClient) setupAPIAddr() error {
 		return nil // already setup by user
 	}
 
-	var addr ma.Multiaddr
+	var addr multiaddr.Multiaddr
 	var err error
 
 	if c.config.Host == "" { //default
-		addr, err := ma.NewMultiaddr(DefaultAPIAddr)
+		addr, err := multiaddr.NewMultiaddr(DefaultAPIAddr)
 		c.config.APIAddr = addr
 		return err
 	}
@@ -253,7 +253,7 @@ func (c *defaultClient) setupAPIAddr() error {
 		addrStr = fmt.Sprintf("/ip6/%s/tcp/%s", c.config.Host, c.config.Port)
 	}
 
-	addr, err = ma.NewMultiaddr(addrStr)
+	addr, err = multiaddr.NewMultiaddr(addrStr)
 	c.config.APIAddr = addr
 	return err
 }
@@ -329,11 +329,11 @@ func (c *defaultClient) setupProxy() error {
 	}
 
 	// Guess location from	APIAddr
-	port, err := ma.NewMultiaddr(fmt.Sprintf("/tcp/%d", DefaultProxyPort))
+	port, err := multiaddr.NewMultiaddr(fmt.Sprintf("/tcp/%d", DefaultProxyPort))
 	if err != nil {
 		return err
 	}
-	c.config.ProxyAddr = ma.Split(c.config.APIAddr)[0].Encapsulate(port)
+	c.config.ProxyAddr = multiaddr.Split(c.config.APIAddr)[0].Encapsulate(port)
 	return nil
 }
 
@@ -347,11 +347,11 @@ func (c *defaultClient) IPFS(ctx context.Context) *shell.Shell {
 
 // IsPeerAddress detects if the given multiaddress identifies a libp2p peer,
 // either because it has the /p2p/ protocol or because it uses /dnsaddr/
-func IsPeerAddress(addr ma.Multiaddr) bool {
+func IsPeerAddress(addr multiaddr.Multiaddr) bool {
 	if addr == nil {
 		return false
 	}
-	pid, err := addr.ValueForProtocol(ma.P_P2P)
+	pid, err := addr.ValueForProtocol(multiaddr.P_P2P)
 	dnsaddr, err2 := addr.ValueForProtocol(madns.DnsaddrProtocol.Code)
 	return (pid != "" && err == nil) || (dnsaddr != "" && err2 == nil)
 }

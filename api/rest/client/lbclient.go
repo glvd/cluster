@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"github.com/multiformats/go-multiaddr"
 	"sync/atomic"
 
 	"github.com/glvd/cluster/api"
@@ -131,6 +132,19 @@ func (lc *loadBalancingClient) Peers(ctx context.Context) ([]*api.ID, error) {
 
 	err := lc.retry(0, call)
 	return peers, err
+}
+
+// PeerJoin add a peer join to the cluster.
+func (lc *loadBalancingClient) PeerJoin(ctx context.Context, addr multiaddr.Multiaddr) (*api.ID, error) {
+	var id *api.ID
+	call := func(c Client) error {
+		var err error
+		id, err = c.PeerJoin(ctx, addr)
+		return err
+	}
+
+	err := lc.retry(0, call)
+	return id, err
 }
 
 // PeerAdd adds a new peer to the cluster.
