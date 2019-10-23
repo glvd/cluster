@@ -11,13 +11,17 @@ import (
 	"time"
 
 	"github.com/glvd/cluster/api"
+
 	cid "github.com/ipfs/go-cid"
+	shell "github.com/ipfs/go-ipfs-api"
 	files "github.com/ipfs/go-ipfs-files"
+	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	madns "github.com/multiformats/go-multiaddr-dns"
 	manet "github.com/multiformats/go-multiaddr-net"
+
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/plugin/ochttp/propagation/tracecontext"
 	"go.opencensus.io/trace"
@@ -34,6 +38,7 @@ var (
 )
 
 var loggingFacility = "apiclient"
+var logger = logging.Logger(loggingFacility)
 
 // Client interface defines the interface to be used by API clients to
 // interact with the ipfs-cluster-service. All methods take a

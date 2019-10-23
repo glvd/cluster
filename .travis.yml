@@ -1,0 +1,52 @@
+language: go
+os:
+  - linux
+#  - osx
+go:
+- '1.13.x'
+services:
+- docker
+
+sudo: required
+
+cache:
+  directories:
+    - $GOPATH/pkg/mod
+    - $HOME/.cache/go-build
+
+install: true
+
+env:
+  - GO111MODULE=on
+
+jobs:
+  include:
+    - stage: "Testing stage"
+      name: "Tests (all modules) + Coverage"
+      script:
+        - go test -v -failfast -timeout 15m -coverprofile=coverage.txt -covermode=atomic ./...
+      after_success:
+        - bash <(curl -s https://codecov.io/bash)
+    - name: "Main Tests with crdt consensus"
+      script:
+        - go test -v -failfast -consensus crdt .
+    - name: "Main Tests with stateless tracker"
+      script:
+        - go test -v -failfast -tracker stateless .
+    - name: "Golint and go vet"
+      script:
+        - go get -u golang.org/x/lint/golint
+        - make check
+        - make service
+        - make ctl
+    - name: "Docker and Compose build"
+      script:
+        - make docker
+        - make docker-compose
+    - name: "Sharness"
+      script:
+        - sudo apt-get update
+        - sudo apt-get install -y jq curl
+        - make install
+        - docker pull ipfs/go-ipfs
+        - make test_sharness && make clean_sharness

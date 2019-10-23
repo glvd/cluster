@@ -21,6 +21,7 @@ import (
 	pb "github.com/glvd/cluster/api/pb"
 
 	cid "github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	multiaddr "github.com/multiformats/go-multiaddr"
@@ -32,6 +33,8 @@ import (
 
 	proto "github.com/gogo/protobuf/proto"
 )
+
+var logger = logging.Logger("apitypes")
 
 func init() {
 	// Use /p2p/ multiaddresses

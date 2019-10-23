@@ -12,11 +12,13 @@ import (
 	"github.com/glvd/cluster/adder/sharding"
 	"github.com/glvd/cluster/adder/single"
 	"github.com/glvd/cluster/api"
-	"github.com/goextension/log"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 )
+
+var logger = logging.Logger("adder")
 
 // AddMultipartHTTPHandler is a helper function to add content
 // uploaded using a multipart request. The outputTransform parameter
@@ -68,7 +70,7 @@ func AddMultipartHTTPHandler(
 		add := adder.New(dags, params, output)
 		root, err := add.FromMultipart(ctx, reader)
 		if err != nil { // Send an error
-			log.Error(err)
+			logger.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			errorResp := api.Error{
 				Code:    http.StatusInternalServerError,
@@ -76,7 +78,7 @@ func AddMultipartHTTPHandler(
 			}
 
 			if err := enc.Encode(errorResp); err != nil {
-				log.Error(err)
+				logger.Error(err)
 			}
 			wg.Wait()
 			return root, err
@@ -102,7 +104,7 @@ func AddMultipartHTTPHandler(
 	add := adder.New(dags, params, output)
 	root, err := add.FromMultipart(ctx, reader)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		// Set trailer with error
 		w.Header().Set("X-Stream-Error", err.Error())
 	}
@@ -116,7 +118,7 @@ func streamOutput(w http.ResponseWriter, output chan *api.AddedOutput, transform
 	for v := range output {
 		err := enc.Encode(transform(v))
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 			break
 		}
 		if flush {

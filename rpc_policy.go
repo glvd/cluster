@@ -1,4 +1,4 @@
-package cluster
+package ipfscluster
 
 // This file can be generated with rpcutil/policygen.
 

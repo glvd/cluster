@@ -10,14 +10,16 @@ import (
 
 	"github.com/glvd/cluster/adder/ipfsadd"
 	"github.com/glvd/cluster/api"
-	"github.com/goextension/log"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
-	"github.com/multiformats/go-multihash"
+	logging "github.com/ipfs/go-log"
+	merkledag "github.com/ipfs/go-merkledag"
+	multihash "github.com/multiformats/go-multihash"
 )
+
+var logger = logging.Logger("adder")
 
 // ClusterDAGService is an implementation of ipld.DAGService plus a Finalize
 // method. ClusterDAGServices can be used to provide Adders with a different
@@ -79,7 +81,7 @@ func (a *Adder) setContext(ctx context.Context) {
 // FromMultipart adds content from a multipart.Reader. The adder will
 // no longer be usable after calling this method.
 func (a *Adder) FromMultipart(ctx context.Context, r *multipart.Reader) (cid.Cid, error) {
-	log.Debugf("adding from multipart with params: %+v", a.params)
+	logger.Debugf("adding from multipart with params: %+v", a.params)
 
 	f, err := files.NewFileFromPartReader(r, "multipart/form-data")
 	if err != nil {
@@ -92,7 +94,7 @@ func (a *Adder) FromMultipart(ctx context.Context, r *multipart.Reader) (cid.Cid
 // FromFiles adds content from a files.Directory. The adder will no longer
 // be usable after calling this method.
 func (a *Adder) FromFiles(ctx context.Context, f files.Directory) (cid.Cid, error) {
-	log.Debug("adding from files")
+	logger.Debug("adding from files")
 	a.setContext(ctx)
 
 	if a.ctx.Err() != nil { // don't allow running twice
@@ -104,7 +106,7 @@ func (a *Adder) FromFiles(ctx context.Context, f files.Directory) (cid.Cid, erro
 
 	ipfsAdder, err := ipfsadd.NewAdder(a.ctx, a.dgs)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return cid.Undef, err
 	}
 
@@ -143,11 +145,11 @@ func (a *Adder) FromFiles(ctx context.Context, f files.Directory) (cid.Cid, erro
 		case <-a.ctx.Done():
 			return cid.Undef, a.ctx.Err()
 		default:
-			log.Debugf("ipfsAdder AddFile(%s)", it.Name())
+			logger.Debugf("ipfsAdder AddFile(%s)", it.Name())
 
 			adderRoot, err = ipfsAdder.AddAllAndPin(it.Node())
 			if err != nil {
-				log.Error("error adding to cluster: ", err)
+				logger.Error("error adding to cluster: ", err)
 				return cid.Undef, err
 			}
 		}
@@ -158,9 +160,9 @@ func (a *Adder) FromFiles(ctx context.Context, f files.Directory) (cid.Cid, erro
 
 	clusterRoot, err := a.dgs.Finalize(a.ctx, adderRoot.Cid())
 	if err != nil {
-		log.Error("error finalizing adder:", err)
+		logger.Error("error finalizing adder:", err)
 		return cid.Undef, err
 	}
-	log.Infof("%s successfully added to cluster", clusterRoot)
+	logger.Infof("%s successfully added to cluster", clusterRoot)
 	return clusterRoot, nil
 }

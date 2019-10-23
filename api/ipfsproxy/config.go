@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/glvd/cluster/config"
 	"github.com/kelseyhightower/envconfig"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/glvd/cluster/config"
 )
 
 const (
@@ -116,11 +117,11 @@ func (cfg *Config) getLogPath() string {
 		return cfg.LogFile
 	}
 
-	if cfg.Dir() == "" {
+	if cfg.BaseDir == "" {
 		return ""
 	}
 
-	return filepath.Join(cfg.Dir(), cfg.LogFile)
+	return filepath.Join(cfg.BaseDir, cfg.LogFile)
 }
 
 // ConfigKey provides a human-friendly identifier for this type of Config.

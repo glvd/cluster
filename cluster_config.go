@@ -1,4 +1,4 @@
-package cluster
+package ipfscluster
 
 import (
 	"encoding/hex"
@@ -8,12 +8,18 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 	"time"
 
-	"github.com/goextension/log"
+	"github.com/glvd/cluster/config"
+
 	pnet "github.com/libp2p/go-libp2p-pnet"
-	"github.com/multiformats/go-multiaddr"
+	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/kelseyhightower/envconfig"
 )
+
+const configKey = "cluster"
 
 // Configuration defaults
 const (
@@ -24,14 +30,14 @@ const (
 	DefaultMonitorPingInterval = 15 * time.Second
 	DefaultPeerWatchInterval   = 5 * time.Second
 	DefaultReplicationFactor   = -1
-	//DefaultLeaveOnShutdown     = false
-	//DefaultDisableRepinning    = false
-	DefaultPeerstoreFile      = "peerstore"
-	DefaultConnMgrHighWater   = 400
-	DefaultConnMgrLowWater    = 100
-	DefaultConnMgrGracePeriod = 2 * time.Minute
-	//DefaultFollowerMode        = false
-	DefaultMDNSInterval = 10 * time.Second
+	DefaultLeaveOnShutdown     = false
+	DefaultDisableRepinning    = false
+	DefaultPeerstoreFile       = "peerstore"
+	DefaultConnMgrHighWater    = 400
+	DefaultConnMgrLowWater     = 100
+	DefaultConnMgrGracePeriod  = 2 * time.Minute
+	DefaultFollowerMode        = false
+	DefaultMDNSInterval        = 10 * time.Second
 )
 
 // ConnMgrConfig configures the libp2p host connection manager.
@@ -41,10 +47,13 @@ type ConnMgrConfig struct {
 	GracePeriod time.Duration
 }
 
+// Config is the configuration object containing customizable variables to
+// initialize the main ipfs-cluster component. It implements the
+// config.ComponentConfig interface.
 type Config struct {
-	//config.Saver
-	//lock          sync.Mutex
-	//peerstoreLock sync.Mutex
+	config.Saver
+	lock          sync.Mutex
+	peerstoreLock sync.Mutex
 
 	// User-defined peername for use as human-readable identifier.
 	Peername string
@@ -64,11 +73,11 @@ type Config struct {
 
 	// Listen parameters for the Cluster libp2p Host. Used by
 	// the RPC and Consensus components.
-	ListenAddr multiaddr.Multiaddr
+	ListenAddr ma.Multiaddr
 
 	// ConnMgr holds configuration values for the connection manager for
 	// the libp2p host.
-	// FIXME: This only applies to cluster-service.
+	// FIXME: This only applies to ipfs-cluster-service.
 	ConnMgr ConnMgrConfig
 
 	// Time between syncs of the consensus state to the
@@ -142,23 +151,16 @@ type Config struct {
 	Tracing bool
 }
 
-// connMgrConfigJSON configures the libp2p host connection manager.
-type connMgrConfigJSON struct {
-	HighWater   int    `json:"high_water"`
-	LowWater    int    `json:"low_water"`
-	GracePeriod string `json:"grace_period"`
-}
-
 // configJSON represents a Cluster configuration as it will look when it is
 // saved using JSON. Most configuration keys are converted into simple types
 // like strings, and key names aim to be self-explanatory for the user.
 type configJSON struct {
 	ID                   string             `json:"id,omitempty"`
-	PeerName             string             `json:"peername"`
+	Peername             string             `json:"peername"`
 	PrivateKey           string             `json:"private_key,omitempty"`
 	Secret               string             `json:"secret"`
 	LeaveOnShutdown      bool               `json:"leave_on_shutdown"`
-	ListenMultiAddress   string             `json:"listen_multiaddress"`
+	ListenMultiaddress   string             `json:"listen_multiaddress"`
 	ConnectionManager    *connMgrConfigJSON `json:"connection_manager"`
 	StateSyncInterval    string             `json:"state_sync_interval"`
 	IPFSSyncInterval     string             `json:"ipfs_sync_interval"`
@@ -170,52 +172,53 @@ type configJSON struct {
 	MDNSInterval         string             `json:"mdns_interval"`
 	DisableRepinning     bool               `json:"disable_repinning"`
 	FollowerMode         bool               `json:"follower_mode,omitempty"`
-	PeerStoreFile        string             `json:"peerstore_file,omitempty"`
+	PeerstoreFile        string             `json:"peerstore_file,omitempty"`
 }
 
-var ConfigPath string
+// connMgrConfigJSON configures the libp2p host connection manager.
+type connMgrConfigJSON struct {
+	HighWater   int    `json:"high_water"`
+	LowWater    int    `json:"low_water"`
+	GracePeriod string `json:"grace_period"`
+}
+
+// ConfigKey returns a human-readable string to identify
+// a cluster Config.
+func (cfg *Config) ConfigKey() string {
+	return configKey
+}
 
 // Default fills in all the Config fields with
 // default working values. This means, it will
 // generate a Secret.
-func DefaultConfig() (*Config, error) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = ""
-	}
+func (cfg *Config) Default() error {
+	cfg.setDefaults()
 
-	addr, _ := multiaddr.NewMultiaddr(DefaultListenAddr)
-
-	//cluster secret
+	// cluster secret
 	clusterSecret, err := pnet.GenerateV1Bytes()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cfg := &Config{
-		Peername:        hostname,
-		Secret:          (*clusterSecret)[:],
-		RPCPolicy:       DefaultRPCPolicy,
-		LeaveOnShutdown: false,
-		ListenAddr:      addr,
-		ConnMgr: ConnMgrConfig{
-			HighWater:   DefaultConnMgrHighWater,
-			LowWater:    DefaultConnMgrLowWater,
-			GracePeriod: DefaultConnMgrGracePeriod,
-		},
-		StateSyncInterval:    DefaultStateSyncInterval,
-		IPFSSyncInterval:     DefaultIPFSSyncInterval,
-		PinRecoverInterval:   DefaultPinRecoverInterval,
-		ReplicationFactorMax: DefaultReplicationFactor,
-		ReplicationFactorMin: DefaultReplicationFactor,
-		MonitorPingInterval:  DefaultMonitorPingInterval,
-		PeerWatchInterval:    DefaultPeerWatchInterval,
-		MDNSInterval:         DefaultMDNSInterval,
-		DisableRepinning:     false,
-		FollowerMode:         false,
-		PeerstoreFile:        "",
-		Tracing:              false,
+	cfg.Secret = (*clusterSecret)[:]
+	// --
+
+	return nil
+}
+
+// ApplyEnvVars fills in any Config fields found
+// as environment variables.
+func (cfg *Config) ApplyEnvVars() error {
+	jcfg, err := cfg.toConfigJSON()
+	if err != nil {
+		return err
 	}
-	return cfg, nil
+
+	err = envconfig.Process(cfg.ConfigKey(), jcfg)
+	if err != nil {
+		return err
+	}
+
+	return cfg.applyConfigJSON(jcfg)
 }
 
 // Validate will check that the values of this config
@@ -261,12 +264,16 @@ func (cfg *Config) Validate() error {
 		return errors.New("cluster.peer_watch_interval is invalid")
 	}
 
-	if err := isReplicationFactorValid(cfg.ReplicationFactorMin, cfg.ReplicationFactorMax); err != nil {
+	rfMax := cfg.ReplicationFactorMax
+	rfMin := cfg.ReplicationFactorMin
+
+	if err := isReplicationFactorValid(rfMin, rfMax); err != nil {
 		return err
 	}
 
 	return isRPCPolicyValid(cfg.RPCPolicy)
 }
+
 func isReplicationFactorValid(rplMin, rplMax int) error {
 	// check Max and Min are correct
 	if rplMin == 0 || rplMax == 0 {
@@ -290,13 +297,14 @@ func isReplicationFactorValid(rplMin, rplMax int) error {
 	}
 	return nil
 }
+
 func isRPCPolicyValid(p map[string]RPCEndpointType) error {
 	rpcComponents := []interface{}{
-		&RPCAPI{},
-		//&PinTrackerRPCAPI{},
-		//&IPFSConnectorRPCAPI{},
-		//&ConsensusRPCAPI{},
-		//&PeerMonitorRPCAPI{},
+		&ClusterRPCAPI{},
+		&PinTrackerRPCAPI{},
+		&IPFSConnectorRPCAPI{},
+		&ConsensusRPCAPI{},
+		&PeerMonitorRPCAPI{},
 	}
 
 	total := 0
@@ -313,78 +321,174 @@ func isRPCPolicyValid(p map[string]RPCEndpointType) error {
 		}
 	}
 	if len(p) != total {
-		log.Warn("defined RPC policy has more entries than needed")
+		logger.Warning("defined RPC policy has more entries than needed")
 	}
 	return nil
 }
 
+// this just sets non-generated defaults
+func (cfg *Config) setDefaults() {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = ""
+	}
+	cfg.Peername = hostname
+
+	addr, _ := ma.NewMultiaddr(DefaultListenAddr)
+	cfg.ListenAddr = addr
+	cfg.ConnMgr = ConnMgrConfig{
+		HighWater:   DefaultConnMgrHighWater,
+		LowWater:    DefaultConnMgrLowWater,
+		GracePeriod: DefaultConnMgrGracePeriod,
+	}
+	cfg.LeaveOnShutdown = DefaultLeaveOnShutdown
+	cfg.StateSyncInterval = DefaultStateSyncInterval
+	cfg.IPFSSyncInterval = DefaultIPFSSyncInterval
+	cfg.PinRecoverInterval = DefaultPinRecoverInterval
+	cfg.ReplicationFactorMin = DefaultReplicationFactor
+	cfg.ReplicationFactorMax = DefaultReplicationFactor
+	cfg.MonitorPingInterval = DefaultMonitorPingInterval
+	cfg.PeerWatchInterval = DefaultPeerWatchInterval
+	cfg.MDNSInterval = DefaultMDNSInterval
+	cfg.DisableRepinning = DefaultDisableRepinning
+	cfg.PeerstoreFile = "" // empty so it gets ommited.
+	cfg.FollowerMode = DefaultFollowerMode
+	cfg.RPCPolicy = DefaultRPCPolicy
+}
+
+// LoadJSON receives a raw json-formatted configuration and
+// sets the Config fields from it. Note that it should be JSON
+// as generated by ToJSON().
 func (cfg *Config) LoadJSON(raw []byte) error {
 	jcfg := &configJSON{}
 	err := json.Unmarshal(raw, jcfg)
 	if err != nil {
-		log.Error("Error unmarshaling cluster config")
+		logger.Error("Error unmarshaling cluster config")
 		return err
 	}
 
-	return cfg.applyConfigJSON(jcfg)
+	cfg.setDefaults()
 
+	return cfg.applyConfigJSON(jcfg)
 }
 
-func (cfg *Config) applyConfigJSON(cjson *configJSON) error {
-	SetIfNotDefault(cjson.PeerStoreFile, &cfg.PeerstoreFile)
+func (cfg *Config) applyConfigJSON(jcfg *configJSON) error {
+	config.SetIfNotDefault(jcfg.PeerstoreFile, &cfg.PeerstoreFile)
 
-	SetIfNotDefault(cjson.PeerName, &cfg.Peername)
+	config.SetIfNotDefault(jcfg.Peername, &cfg.Peername)
 
-	clusterSecret, err := DecodeClusterSecret(cjson.Secret)
+	clusterSecret, err := DecodeClusterSecret(jcfg.Secret)
 	if err != nil {
 		err = fmt.Errorf("error loading cluster secret from config: %s", err)
 		return err
 	}
 	cfg.Secret = clusterSecret
 
-	clusterAddr, err := multiaddr.NewMultiaddr(cjson.ListenMultiAddress)
+	clusterAddr, err := ma.NewMultiaddr(jcfg.ListenMultiaddress)
 	if err != nil {
 		err = fmt.Errorf("error parsing cluster_listen_multiaddress: %s", err)
 		return err
 	}
 	cfg.ListenAddr = clusterAddr
 
-	if conman := cjson.ConnectionManager; conman != nil {
+	if conman := jcfg.ConnectionManager; conman != nil {
 		cfg.ConnMgr = ConnMgrConfig{
-			HighWater: cjson.ConnectionManager.HighWater,
-			LowWater:  cjson.ConnectionManager.LowWater,
+			HighWater: jcfg.ConnectionManager.HighWater,
+			LowWater:  jcfg.ConnectionManager.LowWater,
 		}
-		err = ParseDurations("cluster",
-			&DurationOpt{Duration: cjson.ConnectionManager.GracePeriod, Dst: &cfg.ConnMgr.GracePeriod, Name: "connection_manager.grace_period"},
+		err = config.ParseDurations("cluster",
+			&config.DurationOpt{Duration: jcfg.ConnectionManager.GracePeriod, Dst: &cfg.ConnMgr.GracePeriod, Name: "connection_manager.grace_period"},
 		)
 		if err != nil {
 			return err
 		}
 	}
 
-	rplMin := cjson.ReplicationFactorMin
-	rplMax := cjson.ReplicationFactorMax
-	SetIfNotDefault(rplMin, &cfg.ReplicationFactorMin)
-	SetIfNotDefault(rplMax, &cfg.ReplicationFactorMax)
+	rplMin := jcfg.ReplicationFactorMin
+	rplMax := jcfg.ReplicationFactorMax
+	config.SetIfNotDefault(rplMin, &cfg.ReplicationFactorMin)
+	config.SetIfNotDefault(rplMax, &cfg.ReplicationFactorMax)
 
-	err = ParseDurations("cluster",
-		&DurationOpt{Duration: cjson.StateSyncInterval, Dst: &cfg.StateSyncInterval, Name: "state_sync_interval"},
-		&DurationOpt{Duration: cjson.IPFSSyncInterval, Dst: &cfg.IPFSSyncInterval, Name: "ipfs_sync_interval"},
-		&DurationOpt{Duration: cjson.PinRecoverInterval, Dst: &cfg.PinRecoverInterval, Name: "pin_recover_interval"},
-		&DurationOpt{Duration: cjson.MonitorPingInterval, Dst: &cfg.MonitorPingInterval, Name: "monitor_ping_interval"},
-		&DurationOpt{Duration: cjson.PeerWatchInterval, Dst: &cfg.PeerWatchInterval, Name: "peer_watch_interval"},
-		&DurationOpt{Duration: cjson.MDNSInterval, Dst: &cfg.MDNSInterval, Name: "mdns_interval"},
+	err = config.ParseDurations("cluster",
+		&config.DurationOpt{Duration: jcfg.StateSyncInterval, Dst: &cfg.StateSyncInterval, Name: "state_sync_interval"},
+		&config.DurationOpt{Duration: jcfg.IPFSSyncInterval, Dst: &cfg.IPFSSyncInterval, Name: "ipfs_sync_interval"},
+		&config.DurationOpt{Duration: jcfg.PinRecoverInterval, Dst: &cfg.PinRecoverInterval, Name: "pin_recover_interval"},
+		&config.DurationOpt{Duration: jcfg.MonitorPingInterval, Dst: &cfg.MonitorPingInterval, Name: "monitor_ping_interval"},
+		&config.DurationOpt{Duration: jcfg.PeerWatchInterval, Dst: &cfg.PeerWatchInterval, Name: "peer_watch_interval"},
+		&config.DurationOpt{Duration: jcfg.MDNSInterval, Dst: &cfg.MDNSInterval, Name: "mdns_interval"},
 	)
 	if err != nil {
 		return err
 	}
 
-	cfg.LeaveOnShutdown = cjson.LeaveOnShutdown
-	cfg.DisableRepinning = cjson.DisableRepinning
-	cfg.FollowerMode = cjson.FollowerMode
+	cfg.LeaveOnShutdown = jcfg.LeaveOnShutdown
+	cfg.DisableRepinning = jcfg.DisableRepinning
+	cfg.FollowerMode = jcfg.FollowerMode
 
-	return nil
-	//return cfg.Validate()
+	return cfg.Validate()
+}
+
+// ToJSON generates a human-friendly version of Config.
+func (cfg *Config) ToJSON() (raw []byte, err error) {
+	jcfg, err := cfg.toConfigJSON()
+	if err != nil {
+		return
+	}
+
+	raw, err = json.MarshalIndent(jcfg, "", "    ")
+	return
+}
+
+func (cfg *Config) toConfigJSON() (jcfg *configJSON, err error) {
+	// Multiaddress String() may panic
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%s", r)
+		}
+	}()
+
+	jcfg = &configJSON{}
+
+	// Set all configuration fields
+	jcfg.Peername = cfg.Peername
+	jcfg.Secret = EncodeProtectorKey(cfg.Secret)
+	jcfg.ReplicationFactorMin = cfg.ReplicationFactorMin
+	jcfg.ReplicationFactorMax = cfg.ReplicationFactorMax
+	jcfg.LeaveOnShutdown = cfg.LeaveOnShutdown
+	jcfg.ListenMultiaddress = cfg.ListenAddr.String()
+	jcfg.ConnectionManager = &connMgrConfigJSON{
+		HighWater:   cfg.ConnMgr.HighWater,
+		LowWater:    cfg.ConnMgr.LowWater,
+		GracePeriod: cfg.ConnMgr.GracePeriod.String(),
+	}
+	jcfg.StateSyncInterval = cfg.StateSyncInterval.String()
+	jcfg.IPFSSyncInterval = cfg.IPFSSyncInterval.String()
+	jcfg.PinRecoverInterval = cfg.PinRecoverInterval.String()
+	jcfg.MonitorPingInterval = cfg.MonitorPingInterval.String()
+	jcfg.PeerWatchInterval = cfg.PeerWatchInterval.String()
+	jcfg.MDNSInterval = cfg.MDNSInterval.String()
+	jcfg.DisableRepinning = cfg.DisableRepinning
+	jcfg.PeerstoreFile = cfg.PeerstoreFile
+	jcfg.FollowerMode = cfg.FollowerMode
+
+	return
+}
+
+// GetPeerstorePath returns the full path of the
+// PeerstoreFile, obtained by concatenating that value
+// with BaseDir of the configuration, if set.
+// An empty string is returned when BaseDir is not set.
+func (cfg *Config) GetPeerstorePath() string {
+	if cfg.BaseDir == "" {
+		return ""
+	}
+
+	filename := DefaultPeerstoreFile
+	if cfg.PeerstoreFile != "" {
+		filename = cfg.PeerstoreFile
+	}
+
+	return filepath.Join(cfg.BaseDir, filename)
 }
 
 // DecodeClusterSecret parses a hex-encoded string, checks that it is exactly
@@ -396,102 +500,11 @@ func DecodeClusterSecret(hexSecret string) ([]byte, error) {
 	}
 	switch secretLen := len(secret); secretLen {
 	case 0:
-		log.Warn("Cluster secret is empty, cluster will start on unprotected network.")
+		logger.Warning("Cluster secret is empty, cluster will start on unprotected network.")
 		return nil, nil
 	case 32:
 		return secret, nil
 	default:
 		return nil, fmt.Errorf("input secret is %d bytes, cluster secret should be 32", secretLen)
 	}
-}
-
-// GetPeerstorePath returns the full path of the
-// PeerstoreFile, obtained by concatenating that value
-// with BaseDir of the configuration, if set.
-// An empty string is returned when BaseDir is not set.
-func (cfg *Config) GetPeerstorePath() string {
-	if ConfigPath == "" {
-		return ""
-	}
-
-	filename := DefaultPeerstoreFile
-	if cfg.PeerstoreFile != "" {
-		filename = cfg.PeerstoreFile
-	}
-
-	return filepath.Join(ConfigPath, filename)
-}
-
-// DefaultJSONMarshal produces pretty JSON with 2-space indentation
-func DefaultJSONMarshal(v interface{}) ([]byte, error) {
-	bs, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return bs, nil
-}
-
-// SetIfNotDefault sets dest to the value of src if src is not the default
-// value of the type.
-// dest must be a pointer.
-func SetIfNotDefault(src interface{}, dest interface{}) {
-	switch src.(type) {
-	case time.Duration:
-		t := src.(time.Duration)
-		if t != 0 {
-			*dest.(*time.Duration) = t
-		}
-	case string:
-		str := src.(string)
-		if str != "" {
-			*dest.(*string) = str
-		}
-	case uint64:
-		n := src.(uint64)
-		if n != 0 {
-			*dest.(*uint64) = n
-		}
-	case int:
-		n := src.(int)
-		if n != 0 {
-			*dest.(*int) = n
-		}
-	case bool:
-		b := src.(bool)
-		if b {
-			*dest.(*bool) = b
-		}
-	}
-}
-
-// DurationOpt provides a datatype to use with ParseDurations
-type DurationOpt struct {
-	// The duration we need to parse
-	Duration string
-	// Where to store the result
-	Dst *time.Duration
-	// A variable name associated to it for helpful errors.
-	Name string
-}
-
-// ParseDurations takes a time.Duration src and saves it to the given dst.
-func ParseDurations(component string, args ...*DurationOpt) error {
-	for _, arg := range args {
-		if arg.Duration == "" {
-			// don't do anything. Let the destination field
-			// stay at its default.
-			continue
-		}
-		t, err := time.ParseDuration(arg.Duration)
-		if err != nil {
-			return fmt.Errorf(
-				"error parsing %s.%s: %s",
-				component,
-				arg.Name,
-				err,
-			)
-		}
-		*arg.Dst = t
-	}
-	return nil
 }

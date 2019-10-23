@@ -8,9 +8,9 @@ import (
 	"github.com/glvd/cluster/api"
 	"github.com/glvd/cluster/rpcutil"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 )
 

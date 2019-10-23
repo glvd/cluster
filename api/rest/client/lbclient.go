@@ -4,9 +4,10 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/glvd/cluster/api"
 	cid "github.com/ipfs/go-cid"
+	shell "github.com/ipfs/go-ipfs-api"
 	files "github.com/ipfs/go-ipfs-files"
+	"github.com/glvd/cluster/api"
 	peer "github.com/libp2p/go-libp2p-peer"
 )
 
