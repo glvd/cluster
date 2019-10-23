@@ -142,7 +142,7 @@ requires authorization. implies --https, which you can disable with --force-http
 		cfg := &client.Config{}
 
 		if c.Bool("debug") {
-			logging.SetLogLevel("cluster-ctl", "debug")
+			_ = logging.SetLogLevel("cluster-ctl", "debug")
 			cfg.LogLevel = "debug"
 			logger.Debug("debug level enabled")
 		}
