@@ -166,7 +166,7 @@ func NewCluster(
 
 	// Import known cluster peers from peerstore file. Set
 	// a non permanent TTL.
-	c.peerManager.ImportPeersFromPeerstore(false, peerstore.AddressTTL)
+	_ = c.peerManager.ImportPeersFromPeerstore(false, peerstore.AddressTTL)
 	// Attempt to connect to some peers (up to bootstrapCount)
 	connectedPeers := c.peerManager.Bootstrap(bootstrapCount)
 	// We cannot warn when count is low as this as this is normal if going
@@ -835,6 +835,7 @@ func (c *Cluster) PeerAdd(ctx context.Context, pid peer.ID) (*api.ID, error) {
 	logger.Info("Peer added ", pid.Pretty())
 	addedID, err := c.getIDForPeer(ctx, pid)
 	if err != nil {
+		logger.Error(err)
 		return addedID, err
 	}
 	if !containsPeer(addedID.ClusterPeers, c.id) {
@@ -1780,7 +1781,7 @@ func (c *Cluster) getIDForPeer(ctx context.Context, pid peer.ID) (*api.ID, error
 		pid,
 		"Cluster",
 		"ID",
-		struct{}{},
+		&struct{}{},
 		&id,
 	)
 	if err != nil {
