@@ -50,10 +50,6 @@ func daemon(c *cli.Context) error {
 	logger.Info("Initializing. For verbose output run with \"-l debug\". Please wait...")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	var bootstraps []ma.Multiaddr
-	if bootStr := c.String("bootstrap"); bootStr != "" {
-		bootstraps = parseBootstraps(strings.Split(bootStr, ","))
-	}
 
 	// Execution lock
 	locker.lock()
@@ -74,16 +70,16 @@ func daemon(c *cli.Context) error {
 	raftStaging := false
 	switch cfgHelper.GetConsensus() {
 	case cfgs.Raft.ConfigKey():
-		if len(bootstraps) > 0 {
-			// Cleanup state if bootstrapping
-			raft.CleanupRaft(cfgs.Raft)
-			raftStaging = true
-		}
+		//if len(bootstraps) > 0 {
+		// Cleanup state if bootstrapping
+		_ = raft.CleanupRaft(cfgs.Raft)
+		raftStaging = true
+		//}
 	case cfgs.Crdt.ConfigKey():
-		if !c.Bool("no-trust") {
-			crdtCfg := cfgs.Crdt
-			crdtCfg.TrustedPeers = append(crdtCfg.TrustedPeers, ipfscluster.PeersFromMultiaddrs(bootstraps)...)
-		}
+		//if !c.Bool("no-trust") {
+		//crdtCfg := cfgs.Crdt
+		//crdtCfg.TrustedPeers = append(crdtCfg.TrustedPeers, ipfscluster.PeersFromMultiaddrs(bootstraps)...)
+		//}
 	}
 
 	if c.Bool("leave") {
@@ -101,7 +97,7 @@ func daemon(c *cli.Context) error {
 	// and timeout. So this can happen in background and we
 	// avoid worrying about error handling here (since Cluster
 	// will realize).
-	go bootstrap(ctx, cluster, bootstraps)
+	go bootstrap(ctx, cluster)
 
 	return handleSignals(ctx, cancel, cluster, host, dht)
 }
@@ -207,7 +203,7 @@ func createCluster(
 
 // bootstrap will bootstrap this peer to one of the bootstrap addresses
 // if there are any.
-func bootstrap(ctx context.Context, cluster *ipfscluster.Cluster, bootstraps []ma.Multiaddr) {
+func bootstrap(ctx context.Context, cluster *ipfscluster.Cluster, bootstraps ...ma.Multiaddr) {
 	for _, bstrap := range bootstraps {
 		logger.Infof("Bootstrapping to %s", bstrap)
 		err := cluster.Join(ctx, bstrap)

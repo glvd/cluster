@@ -12,12 +12,12 @@ import (
 
 	"github.com/glvd/cluster/api"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	shell "github.com/ipfs/go-ipfs-api"
 	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-core/host"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	madns "github.com/multiformats/go-multiaddr-dns"
 	manet "github.com/multiformats/go-multiaddr-net"
@@ -218,9 +218,9 @@ func NewDefaultClient(cfg *Config) (Client, error) {
 	}
 
 	if lvl := cfg.LogLevel; lvl != "" {
-		logging.SetLogLevel(loggingFacility, lvl)
+		_ = logging.SetLogLevel(loggingFacility, lvl)
 	} else {
-		logging.SetLogLevel(loggingFacility, DefaultLogLevel)
+		_ = logging.SetLogLevel(loggingFacility, DefaultLogLevel)
 	}
 
 	return client, nil

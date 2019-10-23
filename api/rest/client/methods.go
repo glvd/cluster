@@ -14,11 +14,10 @@ import (
 	"time"
 
 	"github.com/glvd/cluster/api"
-
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	gopath "github.com/ipfs/go-path"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"go.opencensus.io/trace"
 )
@@ -57,8 +56,9 @@ func (c *defaultClient) PeerAdd(ctx context.Context, pid peer.ID) (*api.ID, erro
 
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
-	enc.Encode(body)
-
+	if err := enc.Encode(body); err != nil {
+		return nil, err
+	}
 	var id api.ID
 	err := c.do(ctx, "POST", "/peers", nil, &buf, &id)
 	return &id, err

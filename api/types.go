@@ -20,18 +20,18 @@ import (
 
 	pb "github.com/glvd/cluster/api/pb"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	peer "github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
-	multiaddr "github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/multiformats/go-multiaddr"
 
 	// needed to parse /ws multiaddresses
 	_ "github.com/libp2p/go-ws-transport"
 	// needed to parse /dns* multiaddresses
 	_ "github.com/multiformats/go-multiaddr-dns"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 var logger = logging.Logger("apitypes")
@@ -414,7 +414,7 @@ const (
 )
 
 // AllType is a PinType used for filtering all pin types
-const AllType PinType = DataType | MetaType | ClusterDAGType | ShardType
+const AllType = DataType | MetaType | ClusterDAGType | ShardType
 
 // PinTypeFromString is the inverse of String.  It returns the PinType value
 // corresponding to the input string
@@ -625,12 +625,12 @@ type Pin struct {
 // String is a string representation of a Pin.
 func (pin *Pin) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "cid: %s\n", pin.Cid.String())
-	fmt.Fprintf(&b, "type: %s\n", pin.Type)
-	fmt.Fprintf(&b, "allocations: %v\n", pin.Allocations)
-	fmt.Fprintf(&b, "maxdepth: %d\n", pin.MaxDepth)
+	_, _ = fmt.Fprintf(&b, "cid: %s\n", pin.Cid.String())
+	_, _ = fmt.Fprintf(&b, "type: %s\n", pin.Type)
+	_, _ = fmt.Fprintf(&b, "allocations: %v\n", pin.Allocations)
+	_, _ = fmt.Fprintf(&b, "maxdepth: %d\n", pin.MaxDepth)
 	if pin.Reference != nil {
-		fmt.Fprintf(&b, "reference: %s\n", pin.Reference)
+		_, _ = fmt.Fprintf(&b, "reference: %s\n", pin.Reference)
 	}
 	return b.String()
 }

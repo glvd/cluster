@@ -137,20 +137,22 @@ func init() {
 	// allows HOME hacks for things like Snapcraft builds. HOME
 	// should be set in all UNIX by the OS. Alternatively, we fall back to
 	// usr.HomeDir (which should work on Windows etc.).
-	home := os.Getenv("HOME")
-	if home == "" {
-		usr, err := user.Current()
-		if err != nil {
-			panic(fmt.Sprintf("cannot get current user: %s", err))
+	dir, e := os.Getwd()
+	if e != nil {
+		dir := os.Getenv("HOME")
+		if dir == "" {
+			usr, err := user.Current()
+			if err != nil {
+				panic(fmt.Sprintf("cannot get current user: %s", err))
+			}
+			dir = usr.HomeDir
 		}
-		home = usr.HomeDir
 	}
-
-	DefaultPath = filepath.Join(home, DefaultFolder)
+	DefaultPath = filepath.Join(dir, DefaultFolder)
 }
 
 func out(m string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, m, a...)
+	_, _ = fmt.Fprintf(os.Stderr, m, a...)
 }
 
 func checkErr(doing string, err error, args ...interface{}) {

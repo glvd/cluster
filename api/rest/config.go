@@ -12,8 +12,8 @@ import (
 
 	"github.com/glvd/cluster/config"
 
-	crypto "github.com/libp2p/go-libp2p-core/crypto"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/kelseyhightower/envconfig"
@@ -40,7 +40,6 @@ var (
 	DefaultHeaders = map[string][]string{}
 )
 
-// CORS defaults
 var (
 	DefaultCORSAllowedOrigins = []string{"*"}
 	DefaultCORSAllowedMethods = []string{
@@ -48,15 +47,14 @@ var (
 	}
 	// rs/cors this will set sensible defaults when empty:
 	// {"Origin", "Accept", "Content-Type", "X-Requested-With"}
-	DefaultCORSAllowedHeaders = []string{}
+	DefaultCORSAllowedHeaders []string
 	DefaultCORSExposedHeaders = []string{
 		"Content-Type",
 		"X-Stream-Output",
 		"X-Chunked-Output",
 		"X-Content-Length",
 	}
-	DefaultCORSAllowCredentials = true
-	DefaultCORSMaxAge           time.Duration // 0. Means always.
+	DefaultCORSMaxAge time.Duration // 0. Means always.
 )
 
 // Config is used to intialize the API object and allows to
@@ -207,7 +205,7 @@ func (cfg *Config) Default() error {
 	cfg.CORSAllowedMethods = DefaultCORSAllowedMethods
 	cfg.CORSAllowedHeaders = DefaultCORSAllowedHeaders
 	cfg.CORSExposedHeaders = DefaultCORSExposedHeaders
-	cfg.CORSAllowCredentials = DefaultCORSAllowCredentials
+	cfg.CORSAllowCredentials = true
 	cfg.CORSMaxAge = DefaultCORSMaxAge
 
 	return nil
@@ -247,7 +245,7 @@ func (cfg *Config) Validate() error {
 		return errors.New("restapi.basic_auth_creds should be null or have at least one entry")
 	case (cfg.pathSSLCertFile != "" || cfg.pathSSLKeyFile != "") && cfg.TLS == nil:
 		return errors.New("restapi: missing TLS configuration")
-	case (cfg.CORSMaxAge < 0):
+	case cfg.CORSMaxAge < 0:
 		return errors.New("restapi.cors_max_age is invalid")
 	}
 
@@ -278,7 +276,7 @@ func (cfg *Config) LoadJSON(raw []byte) error {
 		return err
 	}
 
-	cfg.Default()
+	_ = cfg.Default()
 
 	return cfg.applyJSONConfig(jcfg)
 }
