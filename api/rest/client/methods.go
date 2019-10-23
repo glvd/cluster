@@ -22,6 +22,14 @@ import (
 	"go.opencensus.io/trace"
 )
 
+type peerAddBody struct {
+	PeerID string `json:"peer_id"`
+}
+
+type peerJoinBody struct {
+	Addr string `json:"addr"`
+}
+
 // ID returns information about the cluster Peer.
 func (c *defaultClient) ID(ctx context.Context) (*api.ID, error) {
 	ctx, span := trace.StartSpan(ctx, "client/ID")
@@ -42,8 +50,20 @@ func (c *defaultClient) Peers(ctx context.Context) ([]*api.ID, error) {
 	return ids, err
 }
 
-type peerAddBody struct {
-	PeerID string `json:"peer_id"`
+func (c *defaultClient) PeerJoin(ctx context.Context, s string) (*api.ID, error) {
+	ctx, span := trace.StartSpan(ctx, "client/PeerJoin")
+	defer span.End()
+
+	body := peerJoinBody{s}
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	if err := enc.Encode(body); err != nil {
+		return nil, err
+	}
+	var id api.ID
+	err := c.do(ctx, "UPDATE", "/peers", nil, &buf, &id)
+	return &id, err
 }
 
 // PeerAdd adds a new peer to the cluster.

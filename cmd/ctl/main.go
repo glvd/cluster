@@ -233,6 +233,32 @@ This command provides a list of the ID information of all the peers in the Clust
 					},
 				},
 				{
+					Name:  "joint",
+					Usage: "join the nodes participating in the IPFS Cluster",
+					Description: `
+This command provides join the nodes participating in the Cluster.
+`,
+					Flags:     []cli.Flag{},
+					ArgsUsage: " ",
+					Action: func(c *cli.Context) error {
+						arg := c.Args().First()
+						bAddr, err := ma.NewMultiaddr(strings.TrimSpace(arg))
+						if err != nil {
+							checkErr("parsing bootstrap multiaddress", fmt.Errorf("%w:(%s)", err, arg))
+							return err
+						}
+						//addrInfo, err := peer.AddrInfoFromP2pAddr(bAddr)
+						//if err != nil {
+						//	checkErr("parsing multiaddress info from p2p address", fmt.Errorf("%w:(%s)", err, arg))
+						//	return err
+						//}
+						//fmt.Printf("address:%+v\n", addrInfo.Addrs)
+						resp, cerr := globalClient.PeerJoin(ctx, bAddr.String())
+						formatResponse(c, resp, cerr)
+						return nil
+					},
+				},
+				{
 					Name:  "add",
 					Usage: "add the nodes participating in the IPFS Cluster",
 					Description: `
@@ -252,6 +278,7 @@ This command provides add the nodes participating in the Cluster.
 							checkErr("parsing multiaddress info from p2p address", fmt.Errorf("%w:(%s)", err, arg))
 							return err
 						}
+						fmt.Printf("address:%+v\n", addrInfo.Addrs)
 						resp, cerr := globalClient.PeerAdd(ctx, addrInfo.ID)
 						formatResponse(c, resp, cerr)
 						return nil

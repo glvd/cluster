@@ -51,6 +51,8 @@ type Client interface {
 
 	// Peers requests ID information for all cluster peers.
 	Peers(context.Context) ([]*api.ID, error)
+
+	PeerJoin(ctx context.Context, s string) (*api.ID, error)
 	// PeerAdd adds a new peer to the cluster.
 	PeerAdd(ctx context.Context, pid peer.ID) (*api.ID, error)
 	// PeerRm removes a current peer from the cluster
