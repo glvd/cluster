@@ -30,10 +30,6 @@ func daemon(_ *cli.Context) error {
 	log.Info("Initializing. For verbose output run with \"-l debug\". Please wait...")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	var bootstraps []multiaddr.Multiaddr
-	//if bootStr := c.String("bootstrap"); bootStr != "" {
-	//	bootstraps = parseBootstraps(strings.Split(bootStr, ","))
-	//}
 
 	// Execution lock
 	locker.lock()
@@ -51,7 +47,6 @@ func daemon(_ *cli.Context) error {
 	// avoid worrying about error handling here (since Cluster
 	// will realize).
 	//TODO:
-	go bootstrap(ctx, cluster, bootstraps)
 
 	return handleSignals(ctx, cancel, cluster, nil, nil)
 }
@@ -82,18 +77,6 @@ func createCluster(ctx context.Context /*c *cli.Context*/, host host.Host, pubsu
 		//informer,
 		//tracer,
 	)
-}
-
-// bootstrap will bootstrap this peer to one of the bootstrap addresses
-// if there are any.
-func bootstrap(ctx context.Context, cluster *cluster.Cluster, bootstraps []multiaddr.Multiaddr) {
-	for _, bstrap := range bootstraps {
-		log.Infof("Bootstrapping to %s", bstrap)
-		err := cluster.Join(ctx, bstrap)
-		if err != nil {
-			log.Errorf("bootstrap to %s failed: %s", bstrap, err)
-		}
-	}
 }
 
 func handleSignals(

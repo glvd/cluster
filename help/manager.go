@@ -95,7 +95,7 @@ func (m *Manager) ToJSON() ([]byte, error) {
 	//}
 	//
 	//if m.clusterConfig != nil {
-	//	m.clusterConfig.SetBaseDir(dir)
+	//	m.clusterConfig.SetDir(dir)
 	//	raw, err := m.clusterConfig.ToJSON()
 	//
 	//	if err != nil {
@@ -110,7 +110,7 @@ func (m *Manager) ToJSON() ([]byte, error) {
 	//// component-configurations in the latter.
 	//updateJSONConfigs := func(section Section, dest *jsonSection) error {
 	//	for k, v := range section {
-	//		v.SetBaseDir(dir)
+	//		v.SetDir(dir)
 	//		logger.Debugf("writing changes for %s section", k)
 	//		j, err := v.ToJSON()
 	//		if err != nil {

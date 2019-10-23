@@ -192,19 +192,19 @@ func (c *Cluster) Join(ctx context.Context, addr multiaddr.Multiaddr) error {
 	// Note that PeerAdd() on the remote peer will
 	// figure out what our real address is (obviously not
 	// ListenAddr).
-	//var myID api.ID
-	//err = c.rpcClient.CallContext(
-	//	ctx,
-	//	pid,
-	//	"Cluster",
-	//	"PeerAdd",
-	//	c.id,
-	//	&myID,
-	//)
-	//if err != nil {
-	//	log.Error(err)
-	//	return err
-	//}
+	var myID api.ID
+	err = c.rpcClient.CallContext(
+		ctx,
+		pid,
+		"Cluster",
+		"PeerAdd",
+		c.id,
+		&myID,
+	)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 
 	// Log a fake but valid metric from the peer we are
 	// contacting. This will signal a CRDT component that
