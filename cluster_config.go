@@ -69,7 +69,7 @@ type Config struct {
 	// ConnMgr holds configuration values for the connection manager for
 	// the libp2p host.
 	// FIXME: This only applies to cluster-service.
-	ConnMgr *ConnMgrConfig
+	ConnMgr ConnMgrConfig
 
 	// Time between syncs of the consensus state to the
 	// tracker state. Normally states are synced anyway, but this helps
@@ -197,7 +197,7 @@ func DefaultConfig() (*Config, error) {
 		RPCPolicy:       DefaultRPCPolicy,
 		LeaveOnShutdown: false,
 		ListenAddr:      addr,
-		ConnMgr: &ConnMgrConfig{
+		ConnMgr: ConnMgrConfig{
 			HighWater:   DefaultConnMgrHighWater,
 			LowWater:    DefaultConnMgrLowWater,
 			GracePeriod: DefaultConnMgrGracePeriod,
@@ -350,7 +350,7 @@ func (cfg *Config) applyConfigJSON(cjson *configJSON) error {
 	cfg.ListenAddr = clusterAddr
 
 	if conman := cjson.ConnectionManager; conman != nil {
-		cfg.ConnMgr = &ConnMgrConfig{
+		cfg.ConnMgr = ConnMgrConfig{
 			HighWater: cjson.ConnectionManager.HighWater,
 			LowWater:  cjson.ConnectionManager.LowWater,
 		}
