@@ -233,6 +233,31 @@ This command provides a list of the ID information of all the peers in the Clust
 					},
 				},
 				{
+					Name:  "add",
+					Usage: "add the nodes participating in the IPFS Cluster",
+					Description: `
+This command provides add the nodes participating in the Cluster.
+`,
+					Flags:     []cli.Flag{},
+					ArgsUsage: " ",
+					Action: func(c *cli.Context) error {
+						arg := c.Args().First()
+						bAddr, err := ma.NewMultiaddr(strings.TrimSpace(arg))
+						if err != nil {
+							checkErr("parsing bootstrap multiaddress", fmt.Errorf("%w:(%s)", err, arg))
+							return err
+						}
+						addrInfo, err := peer.AddrInfoFromP2pAddr(bAddr)
+						if err != nil {
+							checkErr("parsing multiaddress info from p2p address", fmt.Errorf("%w:(%s)", err, arg))
+							return err
+						}
+						resp, cerr := globalClient.PeerAdd(ctx, addrInfo.ID)
+						formatResponse(c, resp, cerr)
+						return nil
+					},
+				},
+				{
 					Name:  "rm",
 					Usage: "remove a peer from the Cluster",
 					Description: `

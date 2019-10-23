@@ -17,7 +17,6 @@ import (
 	"github.com/glvd/cluster/rpcutil"
 	"github.com/glvd/cluster/state"
 	"github.com/glvd/cluster/version"
-
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -756,24 +755,24 @@ func (c *Cluster) ID(ctx context.Context) *api.ID {
 			Error: err.Error(),
 		}
 	}
-
-	var addrs []api.Multiaddr
+	addrs := make([]api.Multiaddr, 0)
 	mAddrs, err := peer.AddrInfoToP2pAddrs(&peer.AddrInfo{ID: c.id, Addrs: c.host.Addrs()})
 	if err == nil {
 		for _, mAddr := range mAddrs {
 			addrs = append(addrs, api.NewMultiaddrWithValue(mAddr))
 		}
 	}
+	logger.Info("multiaddr:", addrs)
 
-	peers := []peer.ID{}
+	peers := make([]peer.ID, 0)
 	// This method might get called very early by a remote peer
 	// and might catch us when consensus is not set
 	if c.consensus != nil {
 		peers, _ = c.consensus.Peers(ctx)
 	}
-
+	logger.Info("peers:", peers)
 	clusterPeerInfos := c.peerManager.PeerInfos(peers)
-	addresses := []api.Multiaddr{}
+	addresses := make([]api.Multiaddr, 0)
 	for _, pinfo := range clusterPeerInfos {
 		addrs, err := peer.AddrInfoToP2pAddrs(&pinfo)
 		if err != nil {
@@ -783,7 +782,7 @@ func (c *Cluster) ID(ctx context.Context) *api.ID {
 			addresses = append(addresses, api.NewMultiaddrWithValue(a))
 		}
 	}
-
+	logger.Info("addresses:", addresses)
 	id := &api.ID{
 		ID: c.id,
 		//PublicKey:          c.host.Peerstore().PubKey(c.id),
@@ -796,6 +795,7 @@ func (c *Cluster) ID(ctx context.Context) *api.ID {
 		Peername:              c.config.Peername,
 	}
 	if err != nil {
+		logger.Error(err)
 		id.Error = err.Error()
 	}
 
