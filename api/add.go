@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 )
 
 // DefaultShardSize is the shard size for params objects created with DefaultParams().
