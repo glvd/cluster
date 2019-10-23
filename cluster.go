@@ -17,18 +17,18 @@ import (
 	"github.com/glvd/cluster/rpcutil"
 	"github.com/glvd/cluster/state"
 	"github.com/glvd/cluster/version"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	host "github.com/libp2p/go-libp2p-core/host"
-	peer "github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
 
 	ocgorpc "github.com/lanzafame/go-libp2p-ocgorpc"
-	trace "go.opencensus.io/trace"
+	"go.opencensus.io/trace"
 )
 
 // ReadyTimeout specifies the time before giving up
@@ -802,6 +802,68 @@ func (c *Cluster) ID(ctx context.Context) *api.ID {
 	return id
 }
 
+func (c *Cluster) PeerJoin(ctx context.Context, addr multiaddr.Multiaddr) (*api.ID, error) {
+	_, span := trace.StartSpan(ctx, "cluster/PeerJoin")
+	defer span.End()
+	ctx = trace.NewContext(c.ctx, span)
+
+	logger.Debugf("Join(%s)", addr)
+
+	// Add peer to peerstore so we can talk to it (and connect)
+	pid, err := c.peerManager.ImportPeer(addr, true, peerstore.PermanentAddrTTL)
+	id := &api.ID{ID: pid}
+	if err != nil {
+		id.Error = err.Error()
+		return id, err
+	}
+
+	if pid == c.id {
+		return id, nil
+	}
+
+	// Note that PeerAdd() on the remote peer will
+	// figure out what our real address is (obviously not
+	// ListenAddr).
+	var myID api.ID
+	err = c.rpcClient.CallContext(
+		ctx,
+		pid,
+		"Cluster",
+		"PeerAdd",
+		c.id,
+		&myID,
+	)
+	if err != nil {
+		logger.Error(err)
+		myID.Error = err.Error()
+		return &myID, err
+	}
+
+	go func() {
+		_ = c.dht.BootstrapOnce(ctx, dht.DefaultBootstrapConfig)
+	}()
+
+	// ConnectSwarms in the background after a while, when we have likely
+	// received some metrics.
+	time.AfterFunc(c.config.MonitorPingInterval, func() {
+		_ = c.ipfs.ConnectSwarms(ctx)
+	})
+
+	// wait for leader and for state to catch up
+	// then sync
+	err = c.consensus.WaitForSync(ctx)
+	if err != nil {
+		logger.Error(err)
+		myID.Error = err.Error()
+		return &myID, err
+	}
+
+	_ = c.StateSync(ctx)
+
+	logger.Infof("%s: joined %s's cluster", c.id.Pretty(), pid.Pretty())
+	return &myID, err
+}
+
 // PeerAdd adds a new peer to this Cluster.
 //
 // For it to work well, the new peer should be discoverable
@@ -836,6 +898,7 @@ func (c *Cluster) PeerAdd(ctx context.Context, pid peer.ID) (*api.ID, error) {
 	addedID, err := c.getIDForPeer(ctx, pid)
 	if err != nil {
 		logger.Error(err)
+		addedID.Error = err.Error()
 		return addedID, err
 	}
 	if !containsPeer(addedID.ClusterPeers, c.id) {
@@ -871,7 +934,7 @@ func (c *Cluster) PeerRemove(ctx context.Context, pid peer.ID) error {
 // given multiaddress. It works by calling PeerAdd on the destination
 // cluster and making sure that the new peer is ready to discover and contact
 // the rest.
-func (c *Cluster) Join(ctx context.Context, addr ma.Multiaddr) error {
+func (c *Cluster) Join(ctx context.Context, addr multiaddr.Multiaddr) error {
 	_, span := trace.StartSpan(ctx, "cluster/Join")
 	defer span.End()
 	ctx = trace.NewContext(c.ctx, span)
