@@ -172,7 +172,7 @@ func checkErr(doing string, err error, args ...interface{}) {
 func main() {
 	app := cli.NewApp()
 	app.Name = programName
-	app.Usage = "IPFS Cluster node"
+	app.Usage = "Cluster Node"
 	app.Description = Description
 	//app.Copyright = "© Protocol Labs, Inc."
 	app.Version = version.Version.String()
