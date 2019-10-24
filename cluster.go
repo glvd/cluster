@@ -763,15 +763,12 @@ func (c *Cluster) ID(ctx context.Context) *api.ID {
 			addrs = append(addrs, api.NewMultiaddrWithValue(mAddr))
 		}
 	}
-	logger.Info("multiaddr:", addrs)
-
 	peers := make([]peer.ID, 0)
 	// This method might get called very early by a remote peer
 	// and might catch us when consensus is not set
 	if c.consensus != nil {
 		peers, _ = c.consensus.Peers(ctx)
 	}
-	logger.Info("peers:", peers)
 	clusterPeerInfos := c.peerManager.PeerInfos(peers)
 	addresses := make([]api.Multiaddr, 0)
 	for _, pinfo := range clusterPeerInfos {
@@ -783,7 +780,6 @@ func (c *Cluster) ID(ctx context.Context) *api.ID {
 			addresses = append(addresses, api.NewMultiaddrWithValue(a))
 		}
 	}
-	logger.Info("addresses:", addresses)
 	id := &api.ID{
 		ID: c.id,
 		//PublicKey:          c.host.Peerstore().PubKey(c.id),
