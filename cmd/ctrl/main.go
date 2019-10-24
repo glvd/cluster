@@ -247,7 +247,8 @@ This command provides join the nodes participating in the Cluster.
 							checkErr("parsing bootstrap multiaddress", fmt.Errorf("%w:(%s)", err, arg))
 							return err
 						}
-						resp, cerr := globalClient.PeerJoin(ctx, bAddr)
+
+						resp, cerr := globalClient.PeerJoin(ctx, bAddr.String())
 						formatResponse(c, resp, cerr)
 						return nil
 					},

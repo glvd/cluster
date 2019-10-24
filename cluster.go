@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -802,16 +803,22 @@ func (c *Cluster) ID(ctx context.Context) *api.ID {
 	return id
 }
 
-func (c *Cluster) PeerJoin(ctx context.Context, addr multiaddr.Multiaddr) (*api.ID, error) {
+func (c *Cluster) PeerJoin(ctx context.Context, addr string) (*api.ID, error) {
 	_, span := trace.StartSpan(ctx, "cluster/PeerJoin")
 	defer span.End()
 	ctx = trace.NewContext(c.ctx, span)
 
-	logger.Debugf("Join(%s)", addr)
+	id := &api.ID{}
+	a, err := multiaddr.NewMultiaddr(strings.TrimSpace(addr))
+	if err != nil {
+		id.Error = err.Error()
+		return nil, err
+	}
+	logger.Debugf("Join(%s)", a)
 
 	// Add peer to peerstore so we can talk to it (and connect)
-	pid, err := c.peerManager.ImportPeer(addr, true, peerstore.PermanentAddrTTL)
-	id := &api.ID{ID: pid}
+	pid, err := c.peerManager.ImportPeer(a, true, peerstore.PermanentAddrTTL)
+
 	if err != nil {
 		id.Error = err.Error()
 		return id, err

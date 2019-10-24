@@ -689,19 +689,13 @@ func (api *API) peerJoinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a, err := ma.NewMultiaddr(strings.TrimSpace(joinInfo.Addr))
-	if err != nil {
-		api.sendResponse(w, http.StatusBadRequest, errors.New("error decoding multi address"), nil)
-		return
-	}
-
 	var id types.ID
 	err = api.rpcClient.CallContext(
 		r.Context(),
 		"",
 		"Cluster",
 		"PeerJoin",
-		a,
+		joinInfo.Addr,
 		&id,
 	)
 	api.sendResponse(w, autoStatus, err, &id)
