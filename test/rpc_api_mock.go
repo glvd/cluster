@@ -9,6 +9,7 @@ import (
 
 	"github.com/glvd/cluster/api"
 	"github.com/glvd/cluster/state"
+	"github.com/multiformats/go-multiaddr"
 
 	cid "github.com/ipfs/go-cid"
 	gopath "github.com/ipfs/go-path"
@@ -179,6 +180,13 @@ func (mock *mockCluster) Peers(ctx context.Context, in struct{}, out *[]*api.ID)
 	mock.ID(ctx, in, id)
 
 	*out = []*api.ID{id}
+	return nil
+}
+
+func (mock *mockCluster) PeerJoin(ctx context.Context, in multiaddr.Multiaddr, out *api.ID) error {
+	id := api.ID{}
+	mock.ID(ctx, struct{}{}, &id)
+	*out = id
 	return nil
 }
 

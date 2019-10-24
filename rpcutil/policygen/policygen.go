@@ -24,6 +24,7 @@ func rpcTypeStr(t cluster.RPCEndpointType) string {
 }
 
 var comments = map[string]string{
+	"Cluster.PeerJoin":         "Used by ctrl",
 	"Cluster.PeerAdd":          "Used by Join()",
 	"Cluster.Peers":            "Used by ConnectGraph()",
 	"Cluster.Pins":             "Used in stateless tracker, ipfsproxy, restapi",

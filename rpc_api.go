@@ -5,6 +5,7 @@ import (
 
 	"github.com/glvd/cluster/api"
 	"github.com/glvd/cluster/version"
+	"github.com/multiformats/go-multiaddr"
 
 	cid "github.com/ipfs/go-cid"
 	peer "github.com/libp2p/go-libp2p-core/peer"
@@ -234,6 +235,16 @@ func (rpcapi *ClusterRPCAPI) Peers(ctx context.Context, in struct{}, out *[]*api
 // PeerAdd runs Cluster.PeerAdd().
 func (rpcapi *ClusterRPCAPI) PeerAdd(ctx context.Context, in peer.ID, out *api.ID) error {
 	id, err := rpcapi.c.PeerAdd(ctx, in)
+	if err != nil {
+		return err
+	}
+	*out = *id
+	return nil
+}
+
+// PeerJoin runs Cluster.PeerJoin().
+func (rpcapi *ClusterRPCAPI) PeerJoin(ctx context.Context, in multiaddr.Multiaddr, out *api.ID) error {
+	id, err := rpcapi.c.PeerJoin(ctx, in)
 	if err != nil {
 		return err
 	}
