@@ -112,7 +112,7 @@ var logger = logging.Logger("service")
 // Default location for the configurations and data
 var (
 	// DefaultFolder is the name of the cluster folder
-	DefaultFolder = ".ipfs-cluster"
+	DefaultFolder = ".cluster"
 	// DefaultPath is set on init() to $HOME/DefaultFolder
 	// and holds all the ipfs-cluster data
 	DefaultPath string
