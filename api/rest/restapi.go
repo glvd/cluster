@@ -107,6 +107,10 @@ type peerAddBody struct {
 	PeerID string `json:"peer_id"`
 }
 
+type peerJoinBody struct {
+	Addr string `json:"addr"`
+}
+
 type logWriter struct {
 }
 
@@ -365,6 +369,12 @@ func (api *API) routes() []route {
 			"GET",
 			"/peers",
 			api.peerListHandler,
+		},
+		{
+			"PeerJoin",
+			"PUT",
+			"/peers",
+			api.peerJoinHandler,
 		},
 		{
 			"PeerAdd",
@@ -667,6 +677,34 @@ func (api *API) peerListHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	api.sendResponse(w, autoStatus, err, peers)
+}
+func (api *API) peerJoinHandler(w http.ResponseWriter, r *http.Request) {
+	dec := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+
+	var joinInfo peerJoinBody
+	err := dec.Decode(&joinInfo)
+	if err != nil {
+		api.sendResponse(w, http.StatusBadRequest, errors.New("error decoding request body"), nil)
+		return
+	}
+
+	a, err := ma.NewMultiaddr(strings.TrimSpace(joinInfo.Addr))
+	if err != nil {
+		api.sendResponse(w, http.StatusBadRequest, errors.New("error decoding multi address"), nil)
+		return
+	}
+
+	var id types.ID
+	err = api.rpcClient.CallContext(
+		r.Context(),
+		"",
+		"Cluster",
+		"PeerJoin",
+		a,
+		&id,
+	)
+	api.sendResponse(w, autoStatus, err, &id)
 }
 
 func (api *API) peerAddHandler(w http.ResponseWriter, r *http.Request) {
