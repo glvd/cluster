@@ -842,26 +842,11 @@ func (c *Cluster) PeerJoin(ctx context.Context, addr string) (*api.ID, error) {
 		return &myID, err
 	}
 
-	go func() {
-		_ = c.dht.BootstrapOnce(ctx, dht.DefaultBootstrapConfig)
-	}()
-
 	// ConnectSwarms in the background after a while, when we have likely
 	// received some metrics.
 	time.AfterFunc(c.config.MonitorPingInterval, func() {
 		_ = c.ipfs.ConnectSwarms(ctx)
 	})
-
-	// wait for leader and for state to catch up
-	// then sync
-	err = c.consensus.WaitForSync(ctx)
-	if err != nil {
-		logger.Error(err)
-		myID.Error = err.Error()
-		return &myID, err
-	}
-
-	_ = c.StateSync(ctx)
 
 	logger.Infof("%s: joined %s's cluster", c.id.Pretty(), pid.Pretty())
 	return &myID, err
