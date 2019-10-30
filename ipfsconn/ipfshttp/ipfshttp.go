@@ -85,8 +85,11 @@ type ipfsPinLsResp struct {
 }
 
 type ipfsIDResp struct {
-	ID        string
-	Addresses []string
+	Addresses       []string `json:"Addresses"`
+	AgentVersion    string   `json:"AgentVersion"`
+	ID              string   `json:"ID"`
+	ProtocolVersion string   `json:"ProtocolVersion"`
+	PublicKey       string   `json:"PublicKey"`
 }
 
 type ipfsResolveResp struct {
@@ -248,7 +251,6 @@ func (ipfs *Connector) ID(ctx context.Context) (*api.IPFSID, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var res ipfsIDResp
 	err = json.Unmarshal(body, &res)
 	if err != nil {
@@ -261,7 +263,8 @@ func (ipfs *Connector) ID(ctx context.Context) (*api.IPFSID, error) {
 	}
 
 	id := &api.IPFSID{
-		ID: pID,
+		ID:           pID,
+		AgentVersion: res.AgentVersion,
 	}
 
 	mAddrs := make([]api.Multiaddr, len(res.Addresses), len(res.Addresses))
