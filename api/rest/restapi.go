@@ -643,14 +643,12 @@ func (api *API) addHandler(w http.ResponseWriter, r *http.Request) {
 		api.sendResponse(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	logger.Info("query", r.URL.Query())
 	params, err := types.AddParamsFromQuery(r.URL.Query())
 
 	if err != nil {
 		api.sendResponse(w, http.StatusBadRequest, err, nil)
 		return
 	}
-	logger.Info("param", params.ToQueryString())
 	api.setHeaders(w)
 
 	// any errors sent as trailer
