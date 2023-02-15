@@ -7,7 +7,7 @@ require (
 	github.com/dgraph-io/badger v1.6.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gogo/protobuf v1.3.0
-	github.com/golang/protobuf v1.3.2
+	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
@@ -51,7 +51,6 @@ require (
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.3
 	github.com/libp2p/go-libp2p-pnet v0.1.0
-	github.com/libp2p/go-libp2p-protocol v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.1.1
 	github.com/libp2p/go-libp2p-raft v0.1.3
 	github.com/libp2p/go-ws-transport v0.1.2
@@ -60,8 +59,8 @@ require (
 	github.com/multiformats/go-multiaddr-net v0.1.0
 	github.com/multiformats/go-multicodec v0.1.6
 	github.com/multiformats/go-multihash v0.0.8
-	github.com/pkg/errors v0.8.1
-	github.com/prometheus/client_golang v1.2.1
+	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.11.1
 	github.com/rs/cors v1.7.0
 	github.com/ugorji/go/codec v1.1.7
 	github.com/urfave/cli v1.22.1
